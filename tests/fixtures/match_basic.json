@@ -1,0 +1,78 @@
+{
+  "meta": {"data_version": "1.3.0", "created": "2024-04-02", "revision": 1},
+  "info": {
+    "balls_per_over": 6,
+    "city": "Testville",
+    "dates": ["2024-04-01"],
+    "event": {"name": "Test Cup", "match_number": 1, "group": 1},
+    "gender": "male",
+    "match_type": "T20",
+    "match_type_number": 1,
+    "officials": {"umpires": ["U One", "U Two"], "match_referees": ["R One"]},
+    "outcome": {"winner": "Beta", "by": {"wickets": 10}},
+    "overs": 20,
+    "player_of_match": ["B Two"],
+    "players": {
+      "Alpha": ["A One", "A Two", "A Three"],
+      "Beta": ["B One", "B Two", "B Three"]
+    },
+    "registry": {
+      "people": {
+        "A One": "aaaa0001", "A Two": "aaaa0002", "A Three": "aaaa0003",
+        "B One": "bbbb0001", "B Two": "bbbb0002", "B Three": "bbbb0003",
+        "U One": "uuuu0001", "U Two": "uuuu0002", "R One": "rrrr0001"
+      },
+      "venues": {"Test Ground": "vvvv0001"}
+    },
+    "season": 2024,
+    "team_type": "international",
+    "teams": ["Alpha", "Beta"],
+    "toss": {"decision": "bat", "winner": "Alpha"},
+    "venue": "Test Ground"
+  },
+  "innings": [
+    {
+      "team": "Alpha",
+      "powerplays": [{"from": 0.1, "to": 5.6, "type": "mandatory"}],
+      "overs": [
+        {"over": 0, "deliveries": [
+          {"actual_delivery": "0.1", "batter": "A One", "bowler": "B One", "non_striker": "A Two",
+           "runs": {"batter": 0, "extras": 0, "total": 0}},
+          {"actual_delivery": "0.2", "batter": "A One", "bowler": "B One", "non_striker": "A Two",
+           "extras": {"wides": 1}, "runs": {"batter": 0, "extras": 1, "total": 1}},
+          {"actual_delivery": "0.2", "batter": "A One", "bowler": "B One", "non_striker": "A Two",
+           "runs": {"batter": 4, "extras": 0, "total": 4}},
+          {"actual_delivery": "0.3", "batter": "A One", "bowler": "B One", "non_striker": "A Two",
+           "extras": {"noballs": 1}, "runs": {"batter": 2, "extras": 1, "total": 3}},
+          {"actual_delivery": "0.3", "batter": "A One", "bowler": "B One", "non_striker": "A Two",
+           "runs": {"batter": 1, "extras": 0, "total": 1}},
+          {"actual_delivery": "0.4", "batter": "A Two", "bowler": "B One", "non_striker": "A One",
+           "runs": {"batter": 0, "extras": 0, "total": 0},
+           "wickets": [{"player_out": "A Two", "kind": "retired hurt"}]},
+          {"actual_delivery": "0.5", "batter": "A Three", "bowler": "B One", "non_striker": "A One",
+           "runs": {"batter": 0, "extras": 0, "total": 0},
+           "wickets": [{"player_out": "A One", "kind": "run out", "fielders": [{"substitute": true}]}]},
+          {"actual_delivery": "0.6", "batter": "A Three", "bowler": "B One", "non_striker": "A Two",
+           "runs": {"batter": 0, "extras": 0, "total": 0},
+           "review": {"by": "Alpha", "batter": "A Three", "umpire": "U One",
+                      "decision": "struck down", "umpires_call": true, "type": "wicket"},
+           "wickets": [{"player_out": "A Three", "kind": "caught", "fielders": [{"name": "B Two"}]}]}
+        ]}
+      ]
+    },
+    {
+      "team": "Beta",
+      "target": {"overs": 20, "runs": 10},
+      "overs": [
+        {"over": 0, "deliveries": [
+          {"actual_delivery": "0.1", "batter": "B One", "bowler": "A One", "non_striker": "B Two",
+           "replacements": {"match": [{"in": "B Three", "out": "B Two", "team": "Beta",
+                                       "reason": "impact_player"}]},
+           "runs": {"batter": 6, "extras": 0, "total": 6}},
+          {"actual_delivery": "0.2", "batter": "B One", "bowler": "A One", "non_striker": "B Two",
+           "runs": {"batter": 4, "extras": 0, "total": 4, "non_boundary": true}}
+        ]}
+      ]
+    }
+  ]
+}
