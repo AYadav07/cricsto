@@ -14,19 +14,19 @@ Cricsheet ball-by-ball data → local DuckDB database → SQL insights → on-br
 
 Typical loop: a question people are debating ("Who scores fastest at the death since 2024?") → a SQL query → a result table → a chart → a post.
 
-## Current state (v1, working)
+## Current state (2026-11-10: v1 removed, v2 being built)
 
-- Source: Cricsheet **CSV "Ashwin"** format (two files per match: `<id>.csv` ball-by-ball, `<id>_info.csv` key/value match info).
-- `scripts/download.py <codes>`: downloads `https://cricsheet.org/downloads/<code>_<gender>_csv2.zip` into `data/raw/<code>/`.
-- `scripts/build_db.py`: builds `data/cricsto.duckdb` (tables `balls_raw`, `matches`; views from `cricsto/views.sql`).
-- `scripts/refresh.py`: re-download + rebuild (weekly).
-- `cricsto/views.sql`: views `deliveries`, `batter_innings`, `dismissals`.
+The v1 CSV pipeline was removed on 2026-11-10. That covered the CSV data in `data/raw/ipl|odis|t20s`, the old `data/cricsto.duckdb`, `scripts/build_db.py`, `download.py`, `refresh.py` and the CSV loader in `cricsto/db.py`. The v1 code is in git commit `85bda72`. **There is no database until the v2 loader exists**, so `insights.py` won't run yet.
+
+What's still here:
+- `data/raw/json/`: the Cricsheet JSON (source for v2, see "Raw data (v2)").
+- `cricsto/db.py`: query helpers only (`connect()`, `run_query()`, `sql()`).
+- `cricsto/views.sql`: **still v1** (reads `balls_raw`); rewritten in step 2.
 - `cricsto/insights.py`: one-line insight functions backed by `queries/*.sql` (`$param` placeholders).
 - `cricsto/charts.py`: branded `bar()`, `line()`, `save()` → `output/<name>.png` (1600×900).
 - `examples/first_post.py`: end-to-end example.
-- `data/reference/bowler_types.csv`: manual bowler → pace/spin mapping (Cricsheet has no bowling style).
-
-Known gaps in v1: the loader ignores `fielder_1..3`, `actual_delivery`, registry IDs, playing XIs, officials and targets from the CSV.
+- `data/reference/bowler_types.csv`: manual bowler → pace/spin mapping (Cricsheet has no bowling style). Currently empty.
+- `tests/baseline_v1/`: v1 query results saved before removal, for comparing v2 against (see its README).
 
 ## Decisions made (and why)
 
@@ -42,19 +42,19 @@ Known gaps in v1: the loader ignores `fielder_1..3`, `actual_delivery`, registry
 
 ## Raw data (v2)
 
-The JSON is already downloaded: `data/raw/json/<code>_<gender>_json/`. There are 8 folders (`ipl_male`, `wpl_female`, `odis_male`, `odis_female`, `t20s_male`, `t20s_female`, `tests_male`, `tests_female`) holding 11,340 matches in Cricsheet JSON 1.3.0. The v1 CSV folders (`data/raw/ipl`, `odis`, `t20s`) stay until v2 replaces v1.
+The JSON is already downloaded: `data/raw/json/<code>_<gender>_json/`. There are 8 folders (`ipl_male`, `wpl_female`, `odis_male`, `odis_female`, `t20s_male`, `t20s_female`, `tests_male`, `tests_female`) holding 11,340 matches in Cricsheet JSON 1.3.0. It is the only raw data; the v1 CSV is gone.
 
 ## Next task: implement the JSON pipeline (v2)
 
 The full design is in **`SCHEMA.md`** (repo root). Read it before starting. It has every table and column with its JSON source, keys, views, a JSON coverage map, cricket rules, loading and validation, refresh, data notes and example queries. Every open question in it has been answered from the real files.
 
 Order (design done 2026-11-10; next is step 1):
-1. Write `cricsto/schema.sql` (CREATE TABLE with PK/FK) and `cricsto/load_json.py` (incremental loader: parser → per-table DataFrames → bulk insert in one transaction per batch). First test whether DuckDB lets the loader update `people.name` while other rows reference it; if not, keep the PKs, drop the FKs and rely on the orphan check (SCHEMA §7).
+1. Write `cricsto/schema.sql` (CREATE TABLE with PK/FK), `cricsto/load_json.py` (incremental loader: parser → per-table DataFrames → bulk insert in one transaction per batch) and `scripts/build_db.py` (runs the loader; `--full` for a rebuild). Build a fresh `data/cricsto.duckdb` from `data/raw/json/` only. First test whether DuckDB lets the loader update `people.name` while other rows reference it; if not, keep the PKs, drop the FKs and rely on the orphan check (SCHEMA §7).
 2. Rewrite `cricsto/views.sql` on the new tables, keeping v1 column names; compare v1 and v2 results for the same IPL matches.
 3. Add validation (errors + `load_warnings`) and tests with fixture JSON in `tests/fixtures/`.
 4. Write the refresh job: weekly diff + monthly full sync + routing rules (SCHEMA §7a), with the routing tested on the existing files.
 5. Confirm every function in `cricsto/insights.py` and `examples/first_post.py` still runs; switch `batter_vs_bowler_type` / `bowler_types.csv` to `person_id`.
-6. Update `README.md` and this file; retire the v1 CSV pipeline.
+6. Update `README.md` and this file.
 
 Later ideas: `player_in_country` query (player × format × country, e.g. Rohit's ODIs in New Zealand, via a city/venue → country mapping), fielding leaderboards, DRS success rates, Impact Player analysis.
 
