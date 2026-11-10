@@ -79,3 +79,21 @@ def test_impact_players(con):
     n = con.execute("""SELECT count(*) FROM replacements r JOIN matches m USING (match_id)
                        WHERE m.dataset = 'ipl' AND r.reason = 'impact_player'""").fetchone()[0]
     assert n >= 557  # count on 2026-11-10; grows with new IPL seasons
+
+
+def test_find_player_separates_namesakes():
+    from cricsto import insights
+    df = insights.find_player("rashid khan")
+    assert df.person_id.nunique() == 4
+    sciver = insights.find_player("sciver")
+    assert "NR Sciver / NR Sciver-Brunt" in set(sciver.all_names)
+
+
+def test_dismissal_flags_reconcile(con):
+    """Every dismissal is flagged on the striker or non-striker, except players out
+    while not at the crease (timed out; retired out recorded on another ball)."""
+    total = con.execute("SELECT count(*) FROM wickets WHERE is_dismissal").fetchone()[0]
+    flagged = con.execute("SELECT sum(striker_out::INT) + sum(non_striker_out::INT) FROM deliveries").fetchone()[0]
+    away = con.execute("""SELECT count(*) FROM wickets w JOIN balls b USING (match_id, innings_no, over_num, ball_seq)
+                          WHERE w.is_dismissal AND w.player_out_id NOT IN (b.batter_id, b.non_striker_id)""").fetchone()[0]
+    assert flagged + away == total

@@ -9,6 +9,6 @@ SELECT
     count(DISTINCT match_id) AS matches
 FROM deliveries
 WHERE ($dataset = 'all' OR dataset = $dataset)
-  AND innings <= 2 AND phase IS NOT NULL
+  AND NOT is_super_over AND phase IS NOT NULL
 GROUP BY season, phase
 ORDER BY season, CASE phase WHEN 'powerplay' THEN 1 WHEN 'middle' THEN 2 ELSE 3 END;

@@ -419,6 +419,7 @@ One row per ball. A flat, v1-compatible view: `balls` + `innings` + `matches` + 
 | other_player_dismissed, other_player_dismissed_id, other_wicket_type | the wicket with `wicket_seq = 2` |
 | is_wicket | a wicket on this ball with `is_dismissal` (**changed from v1:** retired hurt / retired not out no longer count) |
 | bowler_wicket | a `bowler_credited` wicket on this ball |
+| striker_out, non_striker_out | that batter was dismissed (`is_dismissal`) on this ball. Use these to count outs. Only 10 dismissals fit neither: 2 timed out, and 8 retired out recorded on a ball the retiring player wasn't part of |
 | actual_delivery, batting_team_id, bowling_team_id, venue_id | IDs and Cricsheet label (new) |
 | is_super_over | from `innings` (new) |
 | in_powerplay | ball falls in a `powerplays` row; if the innings has none, the phase rule (new) |

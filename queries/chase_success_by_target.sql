@@ -5,7 +5,7 @@ WITH totals AS (
            sum(total_runs) FILTER (WHERE innings = 1) AS first_total,
            any_value(batting_team) FILTER (WHERE innings = 2) AS chasing_team
     FROM deliveries
-    WHERE innings <= 2
+    WHERE innings <= 2 AND NOT is_super_over
     GROUP BY dataset, match_id
 )
 SELECT

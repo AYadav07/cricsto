@@ -55,3 +55,29 @@ def test_dismissals_with_fielders(loaded):
     assert rows == [("A Two", "retired hurt", None, False),
                     ("A One", "run out", "sub", True),
                     ("A Three", "caught", "B Two", True)]
+
+
+def test_striker_and_non_striker_out(loaded):
+    rows = loaded.q("""SELECT ball_seq, striker_out, non_striker_out FROM deliveries
+                       WHERE innings = 1 AND (striker_out OR non_striker_out OR wicket_type IS NOT NULL)
+                       ORDER BY ball_seq""")
+    assert rows == [(6, False, False),   # retired hurt: nobody out
+                    (7, False, True),    # non-striker run out
+                    (8, True, False)]    # caught
+
+
+def test_find_player_by_old_name(env, monkeypatch):
+    import json
+    from cricsto import db, insights
+    old = basic_match()
+    new = json.loads(json.dumps(basic_match()).replace('"A One"', '"A One-Renamed"'))
+    new["info"]["dates"] = ["2024-06-01"]
+    env.write("900001", old)
+    env.write("900002", new)
+    env.load()
+    env.views()
+    monkeypatch.setattr(db, "DB_PATH", env.db)
+    df = insights.find_player("A One")
+    row = df[df.person_id == "aaaa0001"].iloc[0]
+    assert row["name"] == "A One-Renamed" and row["matches"] == 2
+    assert set(row["all_names"].split(" / ")) == {"A One", "A One-Renamed"}

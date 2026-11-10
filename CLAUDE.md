@@ -14,7 +14,7 @@ Cricsheet ball-by-ball data → local DuckDB database → SQL insights → on-br
 
 Typical loop: a question people are debating ("Who scores fastest at the death since 2024?") → a SQL query → a result table → a chart → a post.
 
-## Current state (2026-11-10: v2 steps 1–4 done, on branch `v2-json`)
+## Current state (2026-11-10: v2 steps 1–5 done, on branch `v2-json`)
 
 v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline is gone; its code is in commit `85bda72` on `main`.
 
@@ -27,8 +27,8 @@ v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline is
 - `cricsto/insights.py`: one-line insight functions backed by `queries/*.sql` (`$param` placeholders). All run on v2.
 - `cricsto/charts.py`: branded `bar()`, `line()`, `save()` → `output/<name>.png` (1600×900). Known issue: long player names are clipped on the left of bar charts.
 - `examples/first_post.py`: end-to-end example; runs on v2.
-- `data/reference/bowler_types.csv`: manual bowler → pace/spin mapping (Cricsheet has no bowling style). Currently empty.
-- `tests/`: `python -m pytest tests`, 42 tests. Fixture-based loader/view tests, plus checks on the real database against `tests/baseline_v1/` (skipped if the database isn't built).
+- `data/reference/bowler_types.csv`: manual bowler → pace/spin mapping, columns `person_id,name,bowler_type` (Cricsheet has no bowling style). Currently empty; `insights.bowlers_to_classify()` lists bowlers to add.
+- `tests/`: `python -m pytest tests`, 46 tests. Fixture-based loader/view tests, plus checks on the real database against `tests/baseline_v1/` (skipped if the database isn't built).
 
 ## Decisions made (and why)
 
@@ -41,6 +41,7 @@ v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline is
 7. **Ball numbering follows Cricsheet (2026-11-10).** `legal_ball_no` counts legal balls only; a wide or no-ball carries the number of the ball being attempted, so it always matches `actual_delivery` (verified on all 5.1M deliveries).
 8. **Validation: errors vs warnings.** Errors stop the load (orphan IDs, numbering mismatch, gender/folder mismatch); data oddities such as an unrecorded 7-ball over go to `load_warnings` and the load continues. A full load gives exactly 4 warnings, all genuine Cricsheet oddities (SCHEMA.md §8).
 10. **Foreign keys kept; deletes child-first (2026-11-10).** DuckDB 2.0 allows updating referenced rows but not deleting a parent in the same transaction as its children. So reloads delete level by level in committed transactions, then insert in one transaction. A match is always fully loaded or absent, and a failed run heals on the next run.
+12. **Queries group by ID (2026-11-10).** `queries/*.sql` group players by `batter_id` / `bowler_id` and venues by `venue_id`, and show the latest name. Outs come from `striker_out` (retirements don't count). Every `ORDER BY` has a tie-break, and super overs are excluded with `NOT is_super_over`. `bowler_types.csv` is keyed by `person_id` (`insights.bowlers_to_classify()` lists who's missing). `find_player()` searches every name a person has used and returns `person_id`.
 11. **`is_wicket` excludes retirements (2026-11-10).** In `deliveries`, retired hurt / retired not out are not wickets (v1 counted them). `player_dismissed` / `wicket_type` still show every wicket entry.
 9. **Loader and refresh are separate.** The loader only reads `data/raw/json/` and is incremental (new / changed / unchanged / gone, via `load_log`). The refresh job only puts files there: a weekly diff from Cricsheet's `recently_added_7_*_json.zip`, plus a monthly full sync of the 8 zips to catch corrections and withdrawals.
 
@@ -52,10 +53,9 @@ The JSON is already downloaded: `data/raw/json/<code>_<gender>_json/`. There are
 
 The full design is in **`SCHEMA.md`** (repo root): every table and column with its JSON source, keys, views, a JSON coverage map, cricket rules, loading and validation, refresh, data notes and example queries.
 
-Done (2026-11-10, branch `v2-json`): 1 schema + loader + build script · 2 views, checked against v1 · 3 validation + tests · 4 refresh job.
+Done (2026-11-10, branch `v2-json`): 1 schema + loader + build script · 2 views, checked against v1 · 3 validation + tests · 4 refresh job · 5 queries updated for v2.
 
 Remaining:
-5. Update queries for v2: switch `batter_vs_bowler_type` / `bowler_types.csv` to `person_id`; consider `bi.is_out` in `batter_recent_form` and `is_wicket` for outs in `batter_phase_strike_rate`, so retirements don't count as outs; add tie-breaks to `ORDER BY`.
 6. Update `README.md` and this file; merge `v2-json` into `main`.
 
 Later ideas: `player_in_country` query (player × format × country, e.g. Rohit's ODIs in New Zealand, via a city/venue → country mapping), fielding leaderboards, DRS success rates, Impact Player analysis.

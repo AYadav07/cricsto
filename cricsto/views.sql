@@ -11,7 +11,8 @@ WITH w AS (
            max(player_out_id) FILTER (WHERE wicket_seq = 2) AS out2_id,
            max(kind)          FILTER (WHERE wicket_seq = 2) AS kind2,
            bool_or(is_dismissal)    AS any_dismissal,
-           bool_or(bowler_credited) AS any_bowler_credited
+           bool_or(bowler_credited) AS any_bowler_credited,
+           list(player_out_id) FILTER (WHERE is_dismissal) AS out_ids
     FROM wickets
     GROUP BY ALL
 ),
@@ -46,6 +47,8 @@ b AS (
         w.kind2                                 AS other_wicket_type,
         COALESCE(w.any_dismissal, false)        AS is_wicket,       -- a batter was out (retired hurt / not out excluded)
         COALESCE(w.any_bowler_credited, false)  AS bowler_wicket,
+        COALESCE(list_contains(w.out_ids, b.batter_id), false)      AS striker_out,      -- striker dismissed on this ball
+        COALESCE(list_contains(w.out_ids, b.non_striker_id), false) AS non_striker_out,  -- e.g. run out backing up
         i.is_super_over,
         i.batting_team_id, i.bowling_team_id, m.venue_id
     FROM balls b
