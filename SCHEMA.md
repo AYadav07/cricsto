@@ -137,6 +137,19 @@ One row per team name.
 | name | VARCHAR | no | `info.teams[]` | |
 | team_type | VARCHAR | no | `info.team_type` | `international` / `club` (never varies per team) |
 
+### `name_sources`
+Bookkeeping: which name each person, venue and team had in each match. The lookup tables' names are recomputed from it after every load (latest match wins), so a corrected or removed match also corrects the name. Not meant for analysis, though it does let you search old spellings.
+**PK** `(match_id, kind, key_id)` · **FK** `match_id` → matches
+
+| Column | Type | Null | Source | Notes |
+|---|---|---|---|---|
+| match_id | VARCHAR | no | file name | |
+| kind | VARCHAR | no | | `person` / `venue` / `team` |
+| key_id | VARCHAR | no | registry ID, or `team_id` | |
+| name | VARCHAR | no | `registry.people` key / `info.venue` / `info.teams[]` | |
+| city | VARCHAR | yes | `info.city` | venues only |
+| team_type | VARCHAR | yes | `info.team_type` | teams only |
+
 ### `matches`
 One row per match.
 **PK** `match_id` · **FK** `venue_id` → venues; `team1_id`, `team2_id`, `toss_winner_id`, `winner_id`, `eliminator_id`, `bowl_out_winner_id` → teams
@@ -181,7 +194,7 @@ One row per match.
 
 ### `match_players`
 One row per player listed for a team in a match. Supersubs are already in the list.
-**PK** `(match_id, person_id)` · **FK** `match_id` → matches, `person_id` → people, `team_id` → teams
+**PK** `(match_id, team_id, person_id)` (one Cricsheet error lists a player for both teams; see §8) · **FK** `match_id` → matches, `person_id` → people, `team_id` → teams
 
 | Column | Type | Null | Source | Notes |
 |---|---|---|---|---|
@@ -261,7 +274,7 @@ Overs where the umpire gave the wrong number of balls.
 | match_id, innings_no | VARCHAR, INT | no | innings key | |
 | over_num | INT | no | `inn.miscounted_overs` key | 0-based (verified on all 381) |
 | balls | INT | no | `.balls` | legal balls actually bowled; sometimes text in JSON |
-| umpire_id | VARCHAR | yes | `reg(.umpire)` | FK → people |
+| umpire_id | VARCHAR | yes | `reg(.umpire)` | FK → people. If the name isn't in the registry (2 cases, e.g. "Bowden"), it's matched by surname to that match's umpires and a warning is recorded |
 
 ### `balls`
 One row per delivery. The big table.
@@ -358,12 +371,12 @@ One row per loaded file.
 
 ### `load_warnings`
 Data oddities found during validation that don't stop the load (§7).
-**PK** `(match_id, check_name, innings_no, over_num)` · **FK** `match_id` → matches
+**No PK** (`innings_no` / `over_num` can be NULL) · **FK** `match_id` → matches
 
 | Column | Type | Null | Notes |
 |---|---|---|---|
 | match_id | VARCHAR | no | |
-| check_name | VARCHAR | no | e.g. `over_too_long`, `miscount_mismatch` |
+| check_name | VARCHAR | no | `over_too_long`, `miscount_mismatch`, `umpire_name_not_in_registry`, `player_in_both_teams` |
 | innings_no | INT | yes | |
 | over_num | INT | yes | |
 | detail | VARCHAR | no | e.g. `7 legal balls, balls_per_over 6` |
@@ -526,18 +539,22 @@ The loader only reads what is in `data/raw/json/`; it never downloads. Getting n
 
    `--full` drops every table and reloads everything (for schema changes).
 3. **Parse in Python** (`json` module), one file at a time, walking the tree once. Names become IDs through that match's `registry.people`. Types are normalised: `season` → text, `event.group` → text, `miscounted_overs.balls` → int, missing flags → false, missing extras → 0.
-4. **Upsert lookup tables.** `people`, `venues` and `teams` get one row per ID; the name is replaced when a match is newer than the one the stored name came from.
-5. **Write match rows in one transaction.** For a changed match, its rows are deleted child-first: fielding → wickets, reviews, replacements → balls → absent_hurt, powerplays, miscounted_overs → innings → match_players, officials, player_of_match → load_warnings, load_log → matches. Then the new rows are inserted in batches (DataFrames per table). The database is never half-updated.
+4. **Delete** the rows of changed and gone matches, child-first, **one committed transaction per level**: fielding → wickets, reviews, replacements → balls → absent_hurt, powerplays, miscounted_overs → innings, match_players, officials, player_of_match, name_sources, load_warnings, load_log → matches. DuckDB won't delete a parent row in the same transaction as its children (tested on DuckDB 2.0.0), so this can't share one transaction with the inserts.
+5. **Insert in one transaction.** Files are parsed in parallel and inserted in chunks of 500 (DataFrames per table): new IDs go into `people` / `venues` / `teams` first, then matches and their children, then `load_log`. At the end, lookup names are recomputed from `name_sources` (latest match wins), and validation runs. An error rolls back the whole transaction.
+
+   **Guarantee:** a match is always fully loaded or absent, never half-loaded. If a run fails after step 4, the matches it was reloading are absent. Their `load_log` rows are gone too, so the next run loads them as new.
 6. **Validate.** Errors stop the load and roll back; warnings are printed and saved, and the load continues.
    - **Errors:**
-     - every foreign key resolves (no orphan IDs);
+     - every foreign key resolves (enforced by the constraints themselves);
      - every `player_out_id` is in that match's `match_players`;
      - `legal_ball_no` matches `actual_delivery` on every ball;
      - `info.gender` matches the folder; no `match_id` appears in two folders; rows per folder = files per folder;
      - no `team_id` hash collisions.
    - **Warnings** (in table `load_warnings`: match_id, innings_no, over_num, check, detail):
      - an over has more legal balls than `balls_per_over` and isn't listed in `miscounted_overs`. Known case: match `1298152`, `over_num` 8 (7 balls);
-     - an over in `miscounted_overs` whose legal-ball count differs from the recorded `balls`.
+     - an over in `miscounted_overs` whose legal-ball count differs from the recorded `balls`;
+     - a `miscounted_overs.umpire` name not in the registry (resolved by surname where possible);
+     - a player listed for both teams.
 7. **Rebuild views** from `views.sql`.
 
 ### 7a. Refresh (getting new files into the folders)
@@ -564,7 +581,9 @@ Routing rules (a file goes to the first rule it matches; no match = skipped):
 
 Before use, the rules are tested on the existing files: every file must route to the folder it already sits in.
 
-**DuckDB caveat to test when writing the loader:** DuckDB may refuse to update a row that other rows point to through a foreign key (e.g. changing `people.name`). If it does, the fallback is to keep primary keys but drop the foreign-key constraints and rely on the orphan check in step 6.
+**Foreign keys (tested on DuckDB 2.0.0):** updating or upserting a referenced row (e.g. `people.name`) works, so all foreign keys are declared and enforced. The only limitation is the delete order in step 4.
+
+**Performance:** a full load of all 11,340 files takes about 40 seconds (16 CPUs).
 
 ---
 
@@ -598,6 +617,9 @@ Before use, the rules are tested on the existing files: every file must route to
 
   The one unlisted 7-ball over is match `1298152`, `over_num` 8; it becomes a load warning.
 - **Ball numbering:** `actual_delivery` labels wides and no-balls with the next legal ball's number; this held on all 5.1M deliveries, and `legal_ball_no` follows it.
+- **Source errors handled as warnings** (in `load_warnings` after a full load):
+  - match `1229824` (Isle of Man v Guernsey T20I): "J Butler" is listed for both teams with the same ID;
+  - matches `325580`, `936133`: `miscounted_overs.umpire` is "Bowden" / "Nigel Llong", not the registry names "BF Bowden" / "NJ Llong"; resolved by surname.
 - **Edge cases:** 10 balls with two wickets; match `1485939` (Netherlands v Nepal T20I) has 6 super-over innings; `toss.uncontested` appears once; `bowl_out` twice.
 - **Optional fields:** `city`, `event`, `officials`, `player_of_match`, `overs`, `event.match_number`, `review.umpire`, `fielders[].name`.
 - **Integrity (all hold):**
