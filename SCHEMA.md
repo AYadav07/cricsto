@@ -415,13 +415,24 @@ One row per ball. A flat, v1-compatible view: `balls` + `innings` + `matches` + 
 | batter_id, non_striker_id, bowler_id | IDs (new) |
 | runs_off_bat, extras, total_runs | `runs_batter`, `runs_extras`, `runs_total` |
 | wides, noballs, byes, legbyes, penalty, non_boundary | from `balls` |
-| player_dismissed, wicket_type | name and kind of the wicket with `wicket_seq = 1` |
-| other_player_dismissed, other_wicket_type | the wicket with `wicket_seq = 2` |
+| player_dismissed, player_dismissed_id, wicket_type | the wicket with `wicket_seq = 1` (any kind, retirements included, as in v1) |
+| other_player_dismissed, other_player_dismissed_id, other_wicket_type | the wicket with `wicket_seq = 2` |
+| is_wicket | a wicket on this ball with `is_dismissal` (**changed from v1:** retired hurt / retired not out no longer count) |
+| bowler_wicket | a `bowler_credited` wicket on this ball |
+| actual_delivery, batting_team_id, bowling_team_id, venue_id | IDs and Cricsheet label (new) |
 | is_super_over | from `innings` (new) |
 | in_powerplay | ball falls in a `powerplays` row; if the innings has none, the phase rule (new) |
-| legal_ball, faced_ball, bowler_runs, is_four, is_six, is_dot, is_wicket, bowler_wicket, phase | §6 rules |
+| legal_ball, faced_ball, bowler_runs, is_four, is_six, is_dot, phase | §6 rules |
 
-Change from v1: `city` now comes from the venue (latest spelling), so old matches show "Bengaluru", not "Bangalore".
+Changes from v1: `city` and `venue` come from the venue's latest name, so all names of a ground group together ("M Chinnaswamy Stadium, Bengaluru" for every match there). `is_wicket` excludes retirements.
+
+**Checked against v1** (`tests/baseline_v1/`, 2026-11-10). Men's IPL, T20I and ODI totals per dataset and season are identical on all 114 seasons: matches, deliveries, runs, bat runs, extras, legal balls, wicket balls, fours and sixes. The insight queries return the same values, except for these intended changes:
+- `wickets_per_over` drops in seasons with a retired-hurt ball;
+- `venue_bat_first` merges renamed grounds;
+- `recent_form` shows the venue's latest name;
+- `t20s` / `odis` include women's matches unless filtered on `gender`.
+
+Rows with equal values may come back in a different order, because the queries have no tie-break.
 
 ### `batter_innings`
 One row per batter per innings. Excludes super overs.
