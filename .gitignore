@@ -1,0 +1,12 @@
+# Downloaded and generated data (rebuild with scripts/refresh.py)
+data/raw/
+data/*.duckdb
+data/*.duckdb.wal
+output/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+Claude.md
