@@ -49,7 +49,7 @@ def test_every_ball_numbered_like_cricsheet(con):
 
 def test_known_warnings(con):
     got = set(con.execute("SELECT match_id, check_name FROM load_warnings").fetchall())
-    assert got == {
+    assert got >= {  # new data may add more; these four are known (SCHEMA.md section 8)
         ("1229824", "player_in_both_teams"),
         ("1298152", "over_too_long"),
         ("325580", "umpire_name_not_in_registry"),
@@ -67,7 +67,15 @@ def test_latest_names(con):
         "Maharashtra Cricket Association Stadium, Pune",)
 
 
+def test_every_raw_file_routes_to_its_folder():
+    import json
+    from cricsto.refresh import route
+    raw = ROOT / "data" / "raw" / "json"
+    wrong = [p for p in raw.glob("*/*.json") if route(json.loads(p.read_bytes())["info"]) != p.parent.name]
+    assert wrong == []
+
+
 def test_impact_players(con):
     n = con.execute("""SELECT count(*) FROM replacements r JOIN matches m USING (match_id)
                        WHERE m.dataset = 'ipl' AND r.reason = 'impact_player'""").fetchone()[0]
-    assert n == 557
+    assert n >= 557  # count on 2026-11-10; grows with new IPL seasons

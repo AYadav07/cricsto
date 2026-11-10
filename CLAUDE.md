@@ -14,7 +14,7 @@ Cricsheet ball-by-ball data → local DuckDB database → SQL insights → on-br
 
 Typical loop: a question people are debating ("Who scores fastest at the death since 2024?") → a SQL query → a result table → a chart → a post.
 
-## Current state (2026-11-10: v2 steps 1–3 done, on branch `v2-json`)
+## Current state (2026-11-10: v2 steps 1–4 done, on branch `v2-json`)
 
 v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline is gone; its code is in commit `85bda72` on `main`.
 
@@ -22,12 +22,13 @@ v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline is
 - `cricsto/schema.sql`: 19 tables with primary and foreign keys (SCHEMA.md §3).
 - `cricsto/load_json.py`: the loader: scan, hash, new/changed/unchanged/gone, parallel parse, chunked insert, lookup names from `name_sources`, validation and `load_warnings`.
 - `cricsto/views.sql` + `cricsto/views.py`: `deliveries`, `batter_innings`, `bowler_innings`, `dismissals` with v1 column names plus IDs. Men's IPL/T20I/ODI totals match v1 on all 114 seasons (SCHEMA.md §4).
+- `python scripts/refresh.py`: weekly refresh from Cricsheet's recently-added zips (`--full` monthly: re-download the 8 full zips; `--dry-run` to preview), then the incremental load. Code in `cricsto/refresh.py` (SCHEMA.md §7a).
 - `cricsto/db.py`: query helpers (`connect()`, `run_query()`, `sql()`).
 - `cricsto/insights.py`: one-line insight functions backed by `queries/*.sql` (`$param` placeholders). All run on v2.
 - `cricsto/charts.py`: branded `bar()`, `line()`, `save()` → `output/<name>.png` (1600×900). Known issue: long player names are clipped on the left of bar charts.
 - `examples/first_post.py`: end-to-end example; runs on v2.
 - `data/reference/bowler_types.csv`: manual bowler → pace/spin mapping (Cricsheet has no bowling style). Currently empty.
-- `tests/`: `python -m pytest tests`, 28 tests. Fixture-based loader/view tests, plus checks on the real database against `tests/baseline_v1/` (skipped if the database isn't built).
+- `tests/`: `python -m pytest tests`, 42 tests. Fixture-based loader/view tests, plus checks on the real database against `tests/baseline_v1/` (skipped if the database isn't built).
 
 ## Decisions made (and why)
 
@@ -51,10 +52,9 @@ The JSON is already downloaded: `data/raw/json/<code>_<gender>_json/`. There are
 
 The full design is in **`SCHEMA.md`** (repo root): every table and column with its JSON source, keys, views, a JSON coverage map, cricket rules, loading and validation, refresh, data notes and example queries.
 
-Done (2026-11-10, branch `v2-json`): 1 schema + loader + build script · 2 views, checked against v1 · 3 validation + tests.
+Done (2026-11-10, branch `v2-json`): 1 schema + loader + build script · 2 views, checked against v1 · 3 validation + tests · 4 refresh job.
 
 Remaining:
-4. Write the refresh job (`scripts/refresh.py`): weekly diff + monthly full sync + routing rules (SCHEMA §7a), with the routing tested on the existing files. Needs downloads from cricsheet.org.
 5. Update queries for v2: switch `batter_vs_bowler_type` / `bowler_types.csv` to `person_id`; consider `bi.is_out` in `batter_recent_form` and `is_wicket` for outs in `batter_phase_strike_rate`, so retirements don't count as outs; add tie-breaks to `ORDER BY`.
 6. Update `README.md` and this file; merge `v2-json` into `main`.
 

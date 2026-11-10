@@ -584,13 +584,29 @@ Routing rules (a file goes to the first rule it matches; no match = skipped):
 
 | Rule | Folder |
 |---|---|
-| `event.name = "Indian Premier League"` | `ipl_male_json` |
-| `event.name = "Women's Premier League"` | `wpl_female_json` |
+| `event.name = "Indian Premier League"`, male, club | `ipl_male_json` |
+| `event.name = "Women's Premier League"`, female, club | `wpl_female_json` |
 | `team_type = international`, `match_type = T20` | `t20s_<gender>_json` |
 | `team_type = international`, `match_type = ODI` | `odis_<gender>_json` |
 | `team_type = international`, `match_type = Test` | `tests_<gender>_json` |
 
-Before use, the rules are tested on the existing files: every file must route to the folder it already sits in.
+The rules are tested on the existing files: every file routes to the folder it already sits in (all 11,340, checked 2026-11-10; also in `tests/test_real_data.py`). Non-official one-dayers (`ODM`) and other leagues are skipped.
+
+**Implementation** (`cricsto/refresh.py`, run by `scripts/refresh.py`):
+
+```
+python scripts/refresh.py              # weekly (--days 2 / 7 / 30)
+python scripts/refresh.py --full       # monthly full sync
+python scripts/refresh.py --dry-run    # show changes only
+```
+
+- Only `<digits>.json` members are taken from a zip, flattened (paths inside the zip are ignored), and each must parse as JSON before anything is written.
+- Files are written via a temp file and rename, so a crash never leaves half a file.
+- Full sync refuses a folder whose zip has fewer than 90% of the local match count (a broken or partial download would otherwise delete matches).
+- Full sync also deletes local matches that are no longer in the zip (withdrawn matches), and keeps README.txt / LICENSE.txt current.
+- After the files change, the incremental loader and views run as usual.
+
+First run (2026-11-10): weekly found 17 relevant matches, all already identical locally (31 others skipped). Full sync found all 11,340 files identical to Cricsheet's zips. In that sample, "recently added" re-listed unchanged matches but contained no corrected ones, so it's still unknown whether corrections reappear there; the monthly full sync covers it either way.
 
 **Foreign keys (tested on DuckDB 2.0.0):** updating or upserting a referenced row (e.g. `people.name`) works, so all foreign keys are declared and enforced. The only limitation is the delete order in step 4.
 
