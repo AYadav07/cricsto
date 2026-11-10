@@ -1,6 +1,6 @@
 # Cricsto database design (Cricsheet JSON → DuckDB)
 
-Status: **design, not yet implemented.** Every rule below was checked against the real files on 2026-11-10: 11,340 matches in `data/raw/json/`, all Cricsheet JSON `data_version` 1.3.0.
+Status: **implemented** (v2, 2026-11-10): `cricsto/schema.sql`, `cricsto/load_json.py`, `cricsto/views.sql`, `cricsto/refresh.py`. Every rule below was checked against the real files: 11,340 matches in `data/raw/json/`, all Cricsheet JSON `data_version` 1.3.0.
 
 Contents: 1 Overview · 2 Keys and lookup tables · 3 Table reference · 4 Views · 5 JSON coverage map · 6 Cricket rules · 7 Loading and validation · 8 Data notes · 9 Query cookbook
 

@@ -14,9 +14,9 @@ Cricsheet ball-by-ball data → local DuckDB database → SQL insights → on-br
 
 Typical loop: a question people are debating ("Who scores fastest at the death since 2024?") → a SQL query → a result table → a chart → a post.
 
-## Current state (2026-11-10: v2 steps 1–5 done, on branch `v2-json`)
+## Current state (2026-11-10: v2 complete, on `main`)
 
-v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline is gone; its code is in commit `85bda72` on `main`.
+v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline was removed; its code is in commit `85bda72`. `README.md` is the user guide; `SCHEMA.md` is the full reference (every table and column with its JSON source, keys, views, a JSON coverage map, cricket rules, loading, validation, refresh, data notes and example queries).
 
 - `python scripts/build_db.py`: incremental load from `data/raw/json/` (about 1 s when nothing changed), then the views. `--full` drops and reloads everything (about 40 s for 11,340 matches, 5.1M balls).
 - `cricsto/schema.sql`: 19 tables with primary and foreign keys (SCHEMA.md §3).
@@ -40,23 +40,23 @@ v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline is
 6. **Normalized tables, IDs not names (2026-11-10).** Names aren't unique: 90 names belong to more than one person (e.g. 4 "Rashid Khan"s), and 25 people / 20 venues changed names. So `people`, `venues` and `teams` are lookup tables with one row per ID and one name (from the most recent match). Every other table stores only IDs, with foreign keys. `team_id` is our own key (`md5(name)[:8]`); Cricsheet has no team IDs.
 7. **Ball numbering follows Cricsheet (2026-11-10).** `legal_ball_no` counts legal balls only; a wide or no-ball carries the number of the ball being attempted, so it always matches `actual_delivery` (verified on all 5.1M deliveries).
 8. **Validation: errors vs warnings.** Errors stop the load (orphan IDs, numbering mismatch, gender/folder mismatch); data oddities such as an unrecorded 7-ball over go to `load_warnings` and the load continues. A full load gives exactly 4 warnings, all genuine Cricsheet oddities (SCHEMA.md §8).
-10. **Foreign keys kept; deletes child-first (2026-11-10).** DuckDB 2.0 allows updating referenced rows but not deleting a parent in the same transaction as its children. So reloads delete level by level in committed transactions, then insert in one transaction. A match is always fully loaded or absent, and a failed run heals on the next run.
-12. **Queries group by ID (2026-11-10).** `queries/*.sql` group players by `batter_id` / `bowler_id` and venues by `venue_id`, and show the latest name. Outs come from `striker_out` (retirements don't count). Every `ORDER BY` has a tie-break, and super overs are excluded with `NOT is_super_over`. `bowler_types.csv` is keyed by `person_id` (`insights.bowlers_to_classify()` lists who's missing). `find_player()` searches every name a person has used and returns `person_id`.
-11. **`is_wicket` excludes retirements (2026-11-10).** In `deliveries`, retired hurt / retired not out are not wickets (v1 counted them). `player_dismissed` / `wicket_type` still show every wicket entry.
 9. **Loader and refresh are separate.** The loader only reads `data/raw/json/` and is incremental (new / changed / unchanged / gone, via `load_log`). The refresh job only puts files there: a weekly diff from Cricsheet's `recently_added_7_*_json.zip`, plus a monthly full sync of the 8 zips to catch corrections and withdrawals.
+10. **Foreign keys kept; deletes child-first (2026-11-10).** DuckDB 2.0 allows updating referenced rows but not deleting a parent in the same transaction as its children. So reloads delete level by level in committed transactions, then insert in one transaction. A match is always fully loaded or absent, and a failed run heals on the next run.
+11. **`is_wicket` excludes retirements (2026-11-10).** In `deliveries`, retired hurt / retired not out are not wickets (v1 counted them). `player_dismissed` / `wicket_type` still show every wicket entry.
+12. **Queries group by ID (2026-11-10).** `queries/*.sql` group players by `batter_id` / `bowler_id` and venues by `venue_id`, and show the latest name. Outs come from `striker_out` (retirements don't count). Every `ORDER BY` has a tie-break, and super overs are excluded with `NOT is_super_over`. `bowler_types.csv` is keyed by `person_id` (`insights.bowlers_to_classify()` lists who's missing). `find_player()` searches every name a person has used and returns `person_id`.
 
 ## Raw data (v2)
 
-The JSON is already downloaded: `data/raw/json/<code>_<gender>_json/`. There are 8 folders (`ipl_male`, `wpl_female`, `odis_male`, `odis_female`, `t20s_male`, `t20s_female`, `tests_male`, `tests_female`) holding 11,340 matches in Cricsheet JSON 1.3.0. It is the only raw data; the v1 CSV is gone.
+`data/raw/json/<code>_<gender>_json/` (git-ignored; on a fresh clone, `python scripts/refresh.py --full` downloads it and builds the database). There are 8 folders (`ipl_male`, `wpl_female`, `odis_male`, `odis_female`, `t20s_male`, `t20s_female`, `tests_male`, `tests_female`) holding 11,340 matches in Cricsheet JSON 1.3.0. It is the only raw data; the v1 CSV is gone.
 
-## Next task: finish the JSON pipeline (v2)
+## Next ideas
 
-The full design is in **`SCHEMA.md`** (repo root): every table and column with its JSON source, keys, views, a JSON coverage map, cricket rules, loading and validation, refresh, data notes and example queries.
+v2 was built in steps 1–6 on branch `v2-json` (2026-11-10) and merged into `main`.
 
-Done (2026-11-10, branch `v2-json`): 1 schema + loader + build script · 2 views, checked against v1 · 3 validation + tests · 4 refresh job · 5 queries updated for v2.
-
-Remaining:
-6. Update `README.md` and this file; merge `v2-json` into `main`.
+Open items:
+- `cricsto/charts.py`: long player names are clipped on the left of bar charts.
+- Fill `data/reference/bowler_types.csv` (`insights.bowlers_to_classify()` lists who's missing).
+- Unknown: whether corrected matches reappear in Cricsheet's "recently added" zips. Monthly `refresh.py --full` covers it either way.
 
 Later ideas: `player_in_country` query (player × format × country, e.g. Rohit's ODIs in New Zealand, via a city/venue → country mapping), fielding leaderboards, DRS success rates, Impact Player analysis.
 
@@ -66,7 +66,8 @@ Later ideas: `player_in_country` query (player × format × country, e.g. Rohit'
 - Check the result table before charting; flag small samples or odd values.
 - Chart subtitles always state sample size and filters (min balls, seasons, phase).
 - Credit "Data: Cricsheet" (the chart template does this).
-- New reusable questions go in `queries/<name>.sql` with `$params`, wrapped in `cricsto/insights.py`.
+- New reusable questions go in `queries/<name>.sql` with `$params`, wrapped in `cricsto/insights.py`. Group by IDs (`batter_id`, `bowler_id`, `venue_id`), never by names, and give `ORDER BY` a tie-break.
+- After changing the loader, views or queries, run `python -m pytest tests`.
 - Don't commit `data/raw/`, `*.duckdb` or `output/` (already in `.gitignore`).
 - Close any open DuckDB connection (DBeaver, CLI) before rebuilding: DuckDB allows one writer.
 
@@ -77,6 +78,7 @@ Later ideas: `player_in_country` query (player × format × country, e.g. Rohit'
 - Bowler's runs: runs off the bat + wides + no-balls (byes and leg byes aren't charged).
 - Bowler-credited wickets: bowled, caught, caught and bowled, lbw, stumped, hit wicket.
 - Boundary: 4 or 6 off the bat, unless `non_boundary` is set.
+- Dismissal (batter is out): any wicket kind except retired hurt and retired not out.
 - Super overs are excluded from most stats.
 
 ## Brand (for charts)
@@ -91,5 +93,6 @@ Sharp, evidence-first, curious. Hook = a question; answer = one clear chart plus
 ## Environment
 
 - Windows 11 laptop, VS Code with the Claude Code extension; Python 3 venv in `.venv/`.
-- Install: `pip install -r requirements.txt` (duckdb, pandas, matplotlib, jupyterlab).
+- Install: `pip install -r requirements.txt` (duckdb, pandas, matplotlib, jupyterlab, pytest). Tested with DuckDB 2.0.0.
+- Tests: `python -m pytest tests` (the real-data tests need the database built).
 - Run SQL directly: `duckdb data/cricsto.duckdb`, or DBeaver → DuckDB connection.
