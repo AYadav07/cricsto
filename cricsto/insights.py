@@ -39,6 +39,12 @@ def chase_success(dataset: str = "ipl", season_from: str = "2018"):
     return run_query("chase_success_by_target", dataset=dataset, season_from=season_from)
 
 
+def big_total_chases(dataset: str = "ipl", threshold: int = 200, gender: str = "all"):
+    """Per season: first-innings totals of `threshold`+ and how many were chased down
+    (completed matches with a winner, D/L matches excluded)."""
+    return run_query("big_total_chases", dataset=dataset, gender=gender, threshold=threshold)
+
+
 def recent_form(batter: str, dataset: str = "all", last_n: int = 10):
     """A batter's last N innings. Pass the Cricsheet name (e.g. 'V Kohli') or a person_id
     from find_player(); use the ID when the name belongs to more than one person."""

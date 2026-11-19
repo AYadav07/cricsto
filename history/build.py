@@ -41,7 +41,7 @@ def csv(fmt: str, name: str) -> str:
 
 def ids(expr: str) -> str:
     """"['12', '-', '34']" -> [12, 34] (NULL if none)."""
-    return f"nullif(list_transform(regexp_extract_all({expr}, '\\d+'), x -> x::BIGINT), [])"
+    return f"nullif(list_transform(regexp_extract_all({expr}, '\\d+'), lambda x: x::BIGINT), [])"
 
 
 def build(con: duckdb.DuckDBPyConnection) -> None:

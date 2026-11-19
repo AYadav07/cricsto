@@ -108,6 +108,50 @@ def bar(labels, values, title: str, subtitle: str | None = None,
         if xlabel:
             ax.set_ylabel(xlabel)
     ax.tick_params(length=0)
+    if horizontal:
+        _fit_left(fig, ax)
+    return fig
+
+
+def _fit_left(fig, ax, min_left: float = 0.08) -> None:
+    """Widen the left margin so the longest y tick label isn't clipped
+    (keeps labels starting at the title's left edge)."""
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    widest = max((t.get_window_extent(renderer).width for t in ax.get_yticklabels()), default=0)
+    left = max(min_left, 0.04 + (widest + 14) / fig.bbox.width)
+    pos = ax.get_position()
+    ax.set_position([left, pos.y0, pos.x1 - left, pos.height])
+
+
+def scatter(x, y, labels, title: str, subtitle: str | None = None,
+            source: str = "Data: Cricsheet", xlabel: str | None = None,
+            ylabel: str | None = None, highlight=None, invert_y: bool = False,
+            label_offsets: dict | None = None):
+    """Labelled scatter (e.g. strike rate vs dot %). `highlight` = label(s) drawn in red;
+    others dimmed. With no highlight, all points are red. `invert_y` puts low values on top.
+    `label_offsets` = {label: (dx, dy)} in points, to move labels that collide; a negative dx
+    right-aligns the label so it sits left of its point."""
+    x, y, labels = list(x), list(y), list(labels)
+    hl = {highlight} if isinstance(highlight, str) else set(highlight or [])
+    fig, ax = _frame(title, subtitle, source)
+    for xi, yi, lab in zip(x, y, labels):
+        on = not hl or lab in hl
+        ax.scatter([xi], [yi], s=90 if on else 60, color=RED if on else DIM_BAR,
+                   zorder=3, edgecolor=NAVY, linewidth=1)
+        dx, dy = (label_offsets or {}).get(lab, (7, 5))
+        ax.annotate(lab, (xi, yi), xytext=(dx, dy), textcoords="offset points",
+                    ha="right" if dx < 0 else "left",
+                    fontsize=10.5 if on else 9.5, color=CREAM if on else MUTED,
+                    fontweight="bold" if on else "normal", zorder=4)
+    ax.margins(x=0.12, y=0.12)
+    if invert_y:
+        ax.invert_yaxis()
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    ax.tick_params(length=0)
     return fig
 
 
@@ -131,7 +175,7 @@ def line(x, series: dict, title: str, subtitle: str | None = None,
     if ylabel:
         ax.set_ylabel(ylabel)
     if len(x) > 12:
-        step = max(1, len(x) // 10)
+        step = -(-len(x) // 10)  # ceil: at most ~10 labels
         ax.set_xticks(x[::step])
     return fig
 
