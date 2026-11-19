@@ -64,6 +64,19 @@ takes about 40 s. Close DBeaver or any `duckdb` session first, because DuckDB al
 New matches usually appear on Cricsheet a few days after they're played; use the live scorecard
 for in-match posts.
 
+### Without your laptop
+
+The **Refresh data** GitHub Action does the weekly refresh in the cloud and publishes the
+database to the `data-latest` release. On any machine, get it with:
+
+```bash
+bash scripts/get_db.sh       # → data/cricsto.duckdb, plus data/manifest.json (latest match per dataset)
+```
+
+It uses the GitHub CLI if you're signed in (`gh auth login`), so it works for a private repo too.
+Run the Action by hand from the repo's **Actions** tab (works in the GitHub phone app); tick
+"Full sync" to re-download everything.
+
 ## 3. Find an insight
 
 ```python

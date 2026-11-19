@@ -1,0 +1,93 @@
+# Weekly Cricsheet refresh → build data/cricsto.duckdb → run the tests →
+# publish the database as a release asset (tag: data-latest).
+#
+# Any machine (laptop, phone session with Claude) gets the latest data with:
+#   bash scripts/get_db.sh
+name: Refresh data
+
+on:
+  schedule:
+    - cron: "30 21 * * 0"   # every Monday 03:00 IST: recently added matches
+    - cron: "30 22 1 * *"   # 1st of each month 04:00 IST: full sync (picks up Cricsheet corrections)
+  workflow_dispatch:         # run by hand from the Actions tab (works from the GitHub phone app)
+    inputs:
+      full:
+        description: "Full sync (re-download all 8 zips)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write            # needed to update the data-latest release
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install "duckdb>=1.1" "pandas>=2.0" "matplotlib>=3.8" "pytest>=8.0"
+
+      # Raw JSON + database from the last run, so a normal week only downloads new matches.
+      - name: Restore previous data
+        id: restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/raw
+            data/cricsto.duckdb
+          key: cricsto-data-${{ github.run_id }}
+          restore-keys: cricsto-data-
+
+      - name: Refresh from Cricsheet
+        run: |
+          if [ "${{ inputs.full }}" = "true" ] \
+             || [ "${{ github.event.schedule }}" = "30 22 1 * *" ] \
+             || [ ! -d data/raw/json ] || [ ! -f data/cricsto.duckdb ]; then
+            echo "Mode: full sync"
+            python scripts/refresh.py --full
+          else
+            # 30-day window: overlaps are free (unchanged files are skipped by hash)
+            # and it covers a missed week.
+            echo "Mode: recently added (30 days)"
+            python scripts/refresh.py --days 30
+          fi
+
+      # Nothing is published unless the loader's validation and the baseline tests pass.
+      - name: Run tests
+        run: python -m pytest tests -q
+
+      - name: Save data for next run
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            data/raw
+            data/cricsto.duckdb
+          key: cricsto-data-${{ github.run_id }}
+
+      - name: Build manifest and compress
+        run: |
+          python scripts/manifest.py > manifest.json
+          cat manifest.json
+          gzip -6 -c data/cricsto.duckdb > cricsto.duckdb.gz
+          ls -lh cricsto.duckdb.gz
+
+      - name: Publish to release data-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view data-latest >/dev/null 2>&1; then
+            gh release create data-latest --title "Latest data" --latest=false \
+              --notes "Built weekly by the Refresh data workflow. Download with: bash scripts/get_db.sh. Data from Cricsheet (cricsheet.org)."
+          fi
+          gh release upload data-latest cricsto.duckdb.gz manifest.json --clobber
