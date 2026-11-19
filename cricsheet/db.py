@@ -1,7 +1,7 @@
-"""Query helpers for the Cricsto DuckDB database (data/cricsto.duckdb).
+"""Query helpers for the Cricsheet DuckDB database (cricsheet/data/cricsto.duckdb).
 
-The database is built from Cricsheet JSON in data/raw/json/ by the v2 loader
-(see SCHEMA.md). This module only opens it and runs queries.
+The database is built from Cricsheet JSON in cricsheet/data/raw/json/ by the v2 loader
+(see cricsheet/SCHEMA.md). This module only opens it and runs queries.
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent          # the cricsheet/ folder
 RAW_DIR = ROOT / "data" / "raw" / "json"
 DB_PATH = ROOT / "data" / "cricsto.duckdb"
 QUERIES_DIR = ROOT / "queries"
@@ -19,14 +19,14 @@ REFERENCE_DIR = ROOT / "data" / "reference"
 
 def connect(read_only: bool = True) -> duckdb.DuckDBPyConnection:
     if not DB_PATH.exists():
-        raise SystemExit("Database not built yet. Run: python scripts/build_db.py")
+        raise SystemExit("Database not built yet. Run: python cricsheet/scripts/build_db.py")
     con = duckdb.connect(str(DB_PATH), read_only=read_only)
     _attach_reference(con)
     return con
 
 
 def _attach_reference(con: duckdb.DuckDBPyConnection) -> None:
-    """Expose data/reference/*.csv (e.g. bowler_types.csv) as views of the same name."""
+    """Expose cricsheet/data/reference/*.csv (e.g. bowler_types.csv) as views of the same name."""
     if not REFERENCE_DIR.exists():
         return
     for path in REFERENCE_DIR.glob("*.csv"):
@@ -37,7 +37,7 @@ def _attach_reference(con: duckdb.DuckDBPyConnection) -> None:
 
 
 def run_query(name: str, **params) -> pd.DataFrame:
-    """Run queries/<name>.sql. Use $param placeholders in the SQL; pass values as kwargs."""
+    """Run cricsheet/queries/<name>.sql. Use $param placeholders in the SQL; pass values as kwargs."""
     sql_text = (QUERIES_DIR / f"{name}.sql").read_text()
     con = connect()
     try:

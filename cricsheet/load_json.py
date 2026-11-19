@@ -1,6 +1,6 @@
-"""Incremental loader: Cricsheet JSON in data/raw/json/ -> DuckDB tables (SCHEMA.md).
+"""Incremental loader: Cricsheet JSON in cricsheet/data/raw/json/ -> DuckDB tables (cricsheet/SCHEMA.md).
 
-    from cricsto.load_json import load
+    from cricsheet.load_json import load
     load()            # new / changed / gone files only
     load(full=True)   # drop every table and reload everything
 
@@ -28,7 +28,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent          # the cricsheet/ folder
 RAW_DIR = ROOT / "data" / "raw" / "json"
 DB_PATH = ROOT / "data" / "cricsto.duckdb"
 SCHEMA_SQL = Path(__file__).with_name("schema.sql")
@@ -442,7 +442,7 @@ def _validate(con: duckdb.DuckDBPyConnection) -> int:
 
 def load(full: bool = False, raw_dir: Path = RAW_DIR, db_path: Path = DB_PATH,
          workers: int | None = None, chunk_size: int = 500, verbose: bool = True) -> dict:
-    """Load data/raw/json into the database. Returns counts of what happened."""
+    """Load cricsheet/data/raw/json into the database. Returns counts of what happened."""
     t0 = time.time()
     say = print if verbose else (lambda *a, **k: None)
 

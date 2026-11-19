@@ -1,7 +1,7 @@
 # history: scorecard database (Tests 1877–2023, ODIs 1971–2023)
 
 A **separate** database for matches Cricsheet doesn't cover (before ~2002), at scorecard level.
-It shares nothing with `data/cricsto.duckdb`: own raw files, own loader, own database file,
+It shares nothing with `cricsheet/data/cricsto.duckdb`: own raw files, own loader, own database file,
 own IDs, own queries. Never join the two or add their numbers together without saying so.
 
 **Full reference for querying: [SCHEMA.md](SCHEMA.md)** (every table and column, coverage by era, rules, example queries).

@@ -68,7 +68,7 @@ def test_striker_and_non_striker_out(loaded):
 
 def test_find_player_by_old_name(env, monkeypatch):
     import json
-    from cricsto import db, insights
+    from cricsheet import db, insights
     old = basic_match()
     new = json.loads(json.dumps(basic_match()).replace('"A One"', '"A One-Renamed"'))
     new["info"]["dates"] = ["2024-06-01"]

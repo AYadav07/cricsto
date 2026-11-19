@@ -1,6 +1,6 @@
 """Ready-made insights. Each returns a pandas DataFrame you can inspect, then chart.
 
-    from cricsto import insights as ins
+    from cricsheet import insights as ins
     ins.phase_scoring("ipl")
     ins.batter_strike_rate("ipl", phase="death", season_from="2023", min_balls=60)
 """
@@ -52,7 +52,7 @@ def recent_form(batter: str, dataset: str = "all", last_n: int = 10):
 
 
 def vs_bowler_type(dataset: str = "ipl", season_from: str = "2022", min_balls: int = 30):
-    """Batters vs bowling types. Fill data/reference/bowler_types.csv first
+    """Batters vs bowling types. Fill cricsheet/data/reference/bowler_types.csv first
     (bowlers_to_classify() lists who is missing)."""
     return run_query("batter_vs_bowler_type", dataset=dataset, season_from=season_from,
                      min_balls=min_balls)
@@ -86,7 +86,7 @@ def find_player(text: str, dataset: str = "all"):
 
 
 def bowlers_to_classify(dataset: str = "ipl", season_from: str = "2022", min_balls: int = 60):
-    """Bowlers missing from data/reference/bowler_types.csv, most balls first.
+    """Bowlers missing from cricsheet/data/reference/bowler_types.csv, most balls first.
     Add rows as: person_id,name,bowler_type (pace / spin)."""
     return sql(
         """

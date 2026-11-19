@@ -1,6 +1,6 @@
 # Cricsto database design (Cricsheet JSON → DuckDB)
 
-Status: **implemented** (v2, 2026-11-10): `cricsto/schema.sql`, `cricsto/load_json.py`, `cricsto/views.sql`, `cricsto/refresh.py`. Every rule below was checked against the real files: 11,340 matches in `data/raw/json/`, all Cricsheet JSON `data_version` 1.3.0.
+Status: **implemented** (v2, 2026-11-10): `cricsheet/schema.sql`, `cricsheet/load_json.py`, `cricsheet/views.sql`, `cricsheet/refresh.py`. Every rule below was checked against the real files: 11,340 matches in `cricsheet/data/raw/json/`, all Cricsheet JSON `data_version` 1.3.0.
 
 Contents: 1 Overview · 2 Keys and lookup tables · 3 Table reference · 4 Views · 5 JSON coverage map · 6 Cricket rules · 7 Loading and validation · 8 Data notes · 9 Query cookbook
 
@@ -10,7 +10,7 @@ Contents: 1 Overview · 2 Keys and lookup tables · 3 Table reference · 4 Views
 
 ### Principles
 
-1. **Raw JSON is the source of truth.** Files in `data/raw/json/` are never edited; the database can always be rebuilt from them.
+1. **Raw JSON is the source of truth.** Files in `cricsheet/data/raw/json/` are never edited; the database can always be rebuilt from them.
 2. **Normalized tables joined by keys.** One table per real-world thing. Lists inside the JSON (wickets on a ball, fielders on a wicket, players in a team) become their own tables, linked by primary and foreign keys.
 3. **IDs, not names.** People, venues and teams are stored once, in lookup tables, with one row per ID and one name. Every other table holds only the ID. To get a name, join the lookup table.
 4. **Store facts, derive the rest in views.** Tables hold what Cricsheet recorded. Flags like `is_four` or `phase` live in views, so the rules can change without reloading.
@@ -41,7 +41,7 @@ match_players  officials  player_of_match  innings
 ### Raw data layout
 
 ```
-data/raw/json/<code>_<gender>_json/<match_id>.json   (+ README.txt, LICENSE.txt: ignored)
+cricsheet/data/raw/json/<code>_<gender>_json/<match_id>.json   (+ README.txt, LICENSE.txt: ignored)
 ```
 
 Folders: `ipl_male_json`, `wpl_female_json`, `odis_male_json`, `odis_female_json`, `t20s_male_json`, `t20s_female_json`, `tests_male_json`, `tests_female_json`.
@@ -385,7 +385,7 @@ Data oddities found during validation that don't stop the load (§7).
 Rows for a match are cleared and re-checked whenever that match reloads.
 
 ### `bowler_types` (your reference list)
-From `data/reference/bowler_types.csv` (currently empty).
+From `cricsheet/data/reference/bowler_types.csv` (currently empty).
 **PK** `person_id` · **FK** `person_id` → people
 
 | Column | Type | Null | Notes |
@@ -398,7 +398,7 @@ From `data/reference/bowler_types.csv` (currently empty).
 
 ## 4. Views
 
-Views do the joins and add name columns, so most stats can be queried without writing joins. They're rebuilt from `cricsto/views.sql` after every load.
+Views do the joins and add name columns, so most stats can be queried without writing joins. They're rebuilt from `cricsheet/views.sql` after every load.
 
 ### `deliveries`
 One row per ball. A flat, v1-compatible view: `balls` + `innings` + `matches` + names + wickets folded in.
@@ -427,7 +427,7 @@ One row per ball. A flat, v1-compatible view: `balls` + `innings` + `matches` + 
 
 Changes from v1: `city` and `venue` come from the venue's latest name, so all names of a ground group together ("M Chinnaswamy Stadium, Bengaluru" for every match there). `is_wicket` excludes retirements.
 
-**Checked against v1** (`tests/baseline_v1/`, 2026-11-10). Men's IPL, T20I and ODI totals per dataset and season are identical on all 114 seasons: matches, deliveries, runs, bat runs, extras, legal balls, wicket balls, fours and sixes. The insight queries return the same values, except for these intended changes:
+**Checked against v1** (`cricsheet/tests/baseline_v1/`, 2026-11-10). Men's IPL, T20I and ODI totals per dataset and season are identical on all 114 seasons: matches, deliveries, runs, bat runs, extras, legal balls, wicket balls, fours and sixes. The insight queries return the same values, except for these intended changes:
 - `wickets_per_over` drops in seasons with a retired-hurt ball;
 - `venue_bat_first` merges renamed grounds;
 - `recent_form` shows the venue's latest name;
@@ -540,9 +540,9 @@ Every key in the JSON and where it lands. ✗ = deliberately not stored.
 
 ## 7. Loading and validation
 
-The loader only reads what is in `data/raw/json/`; it never downloads. Getting new files there is the refresh job (§7a).
+The loader only reads what is in `cricsheet/data/raw/json/`; it never downloads. Getting new files there is the refresh job (§7a).
 
-1. **Scan folders.** List every `<match_id>.json` under `data/raw/json/<code>_<gender>_json/`. Files are never modified.
+1. **Scan folders.** List every `<match_id>.json` under `cricsheet/data/raw/json/<code>_<gender>_json/`. Files are never modified.
 2. **Detect changes** against `load_log`:
    - **new** file (not in `load_log`) → load;
    - **changed** file (different hash or `meta.revision`) → delete the match's rows, then load (corrected matches reload automatically);
@@ -571,7 +571,7 @@ The loader only reads what is in `data/raw/json/`; it never downloads. Getting n
 
 ### 7a. Refresh (getting new files into the folders)
 
-Separate from the loader (`scripts/refresh.py`). Both modes only change files in `data/raw/json/`, then run the incremental loader.
+Separate from the loader (`cricsheet/scripts/refresh.py`). Both modes only change files in `cricsheet/data/raw/json/`, then run the incremental loader.
 
 | | Weekly diff | Monthly full sync |
 |---|---|---|
@@ -591,14 +591,14 @@ Routing rules (a file goes to the first rule it matches; no match = skipped):
 | `team_type = international`, `match_type = ODI` | `odis_<gender>_json` |
 | `team_type = international`, `match_type = Test` | `tests_<gender>_json` |
 
-The rules are tested on the existing files: every file routes to the folder it already sits in (all 11,340, checked 2026-11-10; also in `tests/test_real_data.py`). Non-official one-dayers (`ODM`) and other leagues are skipped.
+The rules are tested on the existing files: every file routes to the folder it already sits in (all 11,340, checked 2026-11-10; also in `cricsheet/tests/test_real_data.py`). Non-official one-dayers (`ODM`) and other leagues are skipped.
 
-**Implementation** (`cricsto/refresh.py`, run by `scripts/refresh.py`):
+**Implementation** (`cricsheet/refresh.py`, run by `cricsheet/scripts/refresh.py`):
 
 ```
-python scripts/refresh.py              # weekly (--days 2 / 7 / 30)
-python scripts/refresh.py --full       # monthly full sync
-python scripts/refresh.py --dry-run    # show changes only
+python cricsheet/scripts/refresh.py              # weekly (--days 2 / 7 / 30)
+python cricsheet/scripts/refresh.py --full       # monthly full sync
+python cricsheet/scripts/refresh.py --dry-run    # show changes only
 ```
 
 - Only `<digits>.json` members are taken from a zip, flattened (paths inside the zip are ignored), and each must parse as JSON before anything is written.

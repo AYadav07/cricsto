@@ -1,6 +1,6 @@
 """Build history/history.duckdb from the scorecard CSVs in history/raw/.
 
-Separate from the Cricsheet database (data/cricsto.duckdb): this script reads only
+Separate from the Cricsheet database (cricsheet/data/cricsto.duckdb): this script reads only
 history/raw/ and writes only history/history.duckdb.
 
 Usage (from the repo root):

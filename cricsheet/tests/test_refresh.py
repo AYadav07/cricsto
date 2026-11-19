@@ -7,7 +7,7 @@ import zipfile
 
 import pytest
 
-from cricsto import refresh
+from cricsheet import refresh
 from conftest import basic_match
 
 

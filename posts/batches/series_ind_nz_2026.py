@@ -1,6 +1,6 @@
 """India in New Zealand, ODIs, Nov 2026: numbers and charts for the series posts.
 
-    python examples/series_ind_nz_2026.py   → output/*.png, and prints every number used
+    python posts/batches/series_ind_nz_2026.py   → posts/output/*.png, and prints every number used
 
 Note: the database ends before this series (Cricsheet lags a few days), so these are
 "before this series" numbers. NZ = matches at grounds in New Zealand cities (NZ_CITIES).
@@ -8,12 +8,12 @@ Note: the database ends before this series (Cricsheet lags a few days), so these
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # repo root
 
 import pandas as pd  # noqa: E402
 
-from cricsto import charts  # noqa: E402
-from cricsto import insights as ins  # noqa: E402
+from posts import charts  # noqa: E402
+from cricsheet import insights as ins  # noqa: E402
 
 pd.set_option("display.width", 200)
 NZ_CITIES = ("Auckland", "Wellington", "Hamilton", "Christchurch", "Dunedin", "Napier", "Nelson",

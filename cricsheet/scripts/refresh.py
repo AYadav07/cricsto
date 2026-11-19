@@ -1,11 +1,11 @@
-"""Get new Cricsheet data into data/raw/json/, then update the database.
+"""Get new Cricsheet data into cricsheet/data/raw/json/, then update the database.
 
 Usage:
-    python scripts/refresh.py              # weekly: matches added in the last 7 days
-    python scripts/refresh.py --days 30    # catch up after a longer gap (2, 7 or 30)
-    python scripts/refresh.py --full       # monthly: re-download the 8 full zips
+    python cricsheet/scripts/refresh.py              # weekly: matches added in the last 7 days
+    python cricsheet/scripts/refresh.py --days 30    # catch up after a longer gap (2, 7 or 30)
+    python cricsheet/scripts/refresh.py --full       # monthly: re-download the 8 full zips
                                            #   (also picks up corrections and removed matches)
-    python scripts/refresh.py --dry-run    # show what would change; change nothing
+    python cricsheet/scripts/refresh.py --dry-run    # show what would change; change nothing
 
 Close any other connection to the database (DBeaver, duckdb CLI) first.
 """
@@ -15,11 +15,11 @@ import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # repo root
 
-from cricsto.load_json import LoadError, load  # noqa: E402
-from cricsto.refresh import full_sync, weekly  # noqa: E402
-from cricsto.views import apply_views  # noqa: E402
+from cricsheet.load_json import LoadError, load  # noqa: E402
+from cricsheet.refresh import full_sync, weekly  # noqa: E402
+from cricsheet.views import apply_views  # noqa: E402
 
 
 def main() -> None:

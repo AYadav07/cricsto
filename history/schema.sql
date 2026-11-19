@@ -1,5 +1,5 @@
 -- history.duckdb: scorecard-level Tests (1877-) and ODIs (1971-), men's.
--- Separate from data/cricsto.duckdb (Cricsheet ball-by-ball). Nothing here references it.
+-- Separate from cricsheet/data/cricsto.duckdb (Cricsheet ball-by-ball). Nothing here references it.
 --
 -- NULL always means "not recorded", never zero. Coverage by era is in history/README.md.
 -- IDs are the source dataset's player/match IDs (ESPNcricinfo-based), not Cricsheet IDs.

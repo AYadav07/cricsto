@@ -1,15 +1,15 @@
 """NZ vs IND Test series batch (2026-11-18): charts for the X drafts.
 
-Numbers come from Cricsheet Test JSON (data/raw/json/tests_male_json), read directly
+Numbers come from Cricsheet Test JSON (cricsheet/data/raw/json/tests_male_json), read directly
 because this batch was run where the DuckDB file could not be opened. WTC figures are
 from the 10 Nov 2026 table (Outlook India) with our own points arithmetic.
 """
 import collections, glob, json, sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from cricsto import charts
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # repo root
+from posts import charts
 
-RAW = Path(__file__).resolve().parent.parent / "data/raw/json/tests_male_json"
+RAW = Path(__file__).resolve().parents[2] / "cricsheet/data/raw/json/tests_male_json"
 NB = {"run out", "retired hurt", "retired out", "obstructing the field", "retired not out"}
 
 matches = []

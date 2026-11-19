@@ -1,6 +1,6 @@
 """Query helpers for history/history.duckdb (scorecard-level Tests and ODIs).
 
-Separate from cricsto/db.py, which serves the Cricsheet database.
+Separate from cricsheet/db.py, which serves the Cricsheet database.
 
     import sys; sys.path.insert(0, "history")    # from the repo root
     from db import run, sql, find_player

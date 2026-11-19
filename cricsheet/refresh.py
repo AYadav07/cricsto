@@ -1,5 +1,5 @@
-"""Refresh data/raw/json/ from Cricsheet (SCHEMA.md section 7a). Only changes files;
-run the loader afterwards (scripts/refresh.py does both).
+"""Refresh cricsheet/data/raw/json/ from Cricsheet (cricsheet/SCHEMA.md section 7a). Only changes files;
+run the loader afterwards (cricsheet/scripts/refresh.py does both).
 
     weekly()      recently added matches (2 small zips), routed into our folders
     full_sync()   the 8 full zips; each folder is made identical to its zip

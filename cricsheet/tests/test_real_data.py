@@ -1,4 +1,4 @@
-"""Checks on the real database (data/cricsto.duckdb). Skipped if it isn't built.
+"""Checks on the real database (cricsheet/data/cricsto.duckdb). Skipped if it isn't built.
 
 Compares v2 with the v1 baseline in tests/baseline_v1/ and checks known facts
 about the full Cricsheet load (SCHEMA.md section 8).
@@ -11,11 +11,11 @@ import duckdb
 import pandas as pd
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[1]   # the cricsheet/ folder
 DB = ROOT / "data" / "cricsto.duckdb"
 BASELINE = Path(__file__).parent / "baseline_v1"
 
-pytestmark = pytest.mark.skipif(not DB.exists(), reason="data/cricsto.duckdb not built")
+pytestmark = pytest.mark.skipif(not DB.exists(), reason="cricsheet/data/cricsto.duckdb not built")
 
 
 @pytest.fixture(scope="module")
@@ -69,7 +69,7 @@ def test_latest_names(con):
 
 def test_every_raw_file_routes_to_its_folder():
     import json
-    from cricsto.refresh import route
+    from cricsheet.refresh import route
     raw = ROOT / "data" / "raw" / "json"
     wrong = [p for p in raw.glob("*/*.json") if route(json.loads(p.read_bytes())["info"]) != p.parent.name]
     assert wrong == []
@@ -82,7 +82,7 @@ def test_impact_players(con):
 
 
 def test_find_player_separates_namesakes():
-    from cricsto import insights
+    from cricsheet import insights
     df = insights.find_player("rashid khan")
     assert df.person_id.nunique() == 4
     sciver = insights.find_player("sciver")

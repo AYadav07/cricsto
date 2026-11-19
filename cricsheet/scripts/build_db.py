@@ -1,8 +1,8 @@
-"""Build or update data/cricsto.duckdb from the Cricsheet JSON in data/raw/json/.
+"""Build or update cricsheet/data/cricsto.duckdb from the Cricsheet JSON in cricsheet/data/raw/json/.
 
 Usage:
-    python scripts/build_db.py          # incremental: new / changed / removed files only
-    python scripts/build_db.py --full   # drop every table and reload everything
+    python cricsheet/scripts/build_db.py          # incremental: new / changed / removed files only
+    python cricsheet/scripts/build_db.py --full   # drop every table and reload everything
 
 Close any other connection to the database (DBeaver, duckdb CLI) first:
 DuckDB allows only one writer.
@@ -13,10 +13,10 @@ import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # repo root
 
-from cricsto.load_json import LoadError, load  # noqa: E402
-from cricsto.views import apply_views  # noqa: E402
+from cricsheet.load_json import LoadError, load  # noqa: E402
+from cricsheet.views import apply_views  # noqa: E402
 
 
 def main() -> None:

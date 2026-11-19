@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Download the latest database built by the "Refresh data" GitHub Action.
-# Replaces data/cricsto.duckdb. Close other connections to it (DBeaver, duckdb CLI) first.
+# Replaces cricsheet/data/cricsto.duckdb. Close other connections to it (DBeaver, duckdb CLI) first.
 #
 # Works for a public or private repo:
 #   - signed in to the GitHub CLI (gh auth login) → downloads with your login
 #   - otherwise → public download link (public repo only)
 #
-# Usage: bash scripts/get_db.sh
+# Usage: bash cricsheet/scripts/get_db.sh   (from anywhere; writes into cricsheet/data/)
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.."                   # the cricsheet/ folder
 REPO="AYadav07/cricsto"
 TAG="data-latest"
 mkdir -p data
@@ -27,6 +27,6 @@ else
   curl -fsSL --retry 3 -o data/manifest.json "$URL/manifest.json"
 fi
 
-gunzip -f data/cricsto.duckdb.gz          # → data/cricsto.duckdb
+gunzip -f data/cricsto.duckdb.gz          # → cricsheet/data/cricsto.duckdb
 echo "Done. Data summary:"
 cat data/manifest.json

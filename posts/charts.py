@@ -13,9 +13,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / "output"
-FONTS_DIR = ROOT / "fonts"
+HERE = Path(__file__).resolve().parent           # the posts/ folder
+OUT_DIR = HERE / "output"
+FONTS_DIR = HERE / "fonts"
 
 NAVY = "#0E1A2B"
 RED = "#D94B3D"
@@ -29,7 +29,7 @@ HANDLE = "@cricsto"
 
 
 def _register_fonts() -> tuple[str, str]:
-    """Use Space Grotesk / Inter if available (system or ./fonts), else fall back."""
+    """Use Space Grotesk / Inter if available (system or posts/fonts), else fall back."""
     if FONTS_DIR.exists():
         for f in list(FONTS_DIR.glob("*.ttf")) + list(FONTS_DIR.glob("*.otf")):
             font_manager.fontManager.addfont(str(f))
@@ -181,7 +181,7 @@ def line(x, series: dict, title: str, subtitle: str | None = None,
 
 
 def save(fig, name: str) -> Path:
-    """Save to output/<name>.png at 1600x900 and close the figure."""
+    """Save to posts/output/<name>.png at 1600x900 and close the figure."""
     OUT_DIR.mkdir(exist_ok=True)
     path = OUT_DIR / f"{name}.png"
     fig.savefig(path, dpi=200, facecolor=NAVY)

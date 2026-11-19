@@ -1,5 +1,5 @@
 -- Batters against each bowling type.
--- Needs data/reference/bowler_types.csv (person_id, name, bowler_type); see insights.bowlers_to_classify().
+-- Needs cricsheet/data/reference/bowler_types.csv (person_id, name, bowler_type); see insights.bowlers_to_classify().
 -- Params: $dataset, $season_from, $min_balls
 WITH x AS (
     SELECT

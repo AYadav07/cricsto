@@ -1,8 +1,12 @@
-# Downloaded and generated data (rebuild with scripts/refresh.py)
-data/raw/
-data/*.duckdb
-data/*.duckdb.wal
-output/
+# Cricsheet: downloaded and generated data (rebuild with python cricsheet/scripts/refresh.py)
+cricsheet/data/raw/
+cricsheet/data/*.duckdb
+cricsheet/data/*.duckdb.gz
+cricsheet/data/*.duckdb.wal
+cricsheet/data/manifest.json
+
+# Posts: generated charts (rerun a batch in posts/batches/)
+posts/output/
 
 # Python
 __pycache__/

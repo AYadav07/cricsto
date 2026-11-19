@@ -3,7 +3,7 @@
 Everything you need to query `history/history.duckdb` by hand: every table and column, how they
 join, which values are recorded in which era, and tested example queries.
 
-**This database is separate from `data/cricsto.duckdb` (Cricsheet).** It has different IDs and
+**This database is separate from `cricsheet/data/cricsto.duckdb` (Cricsheet).** It has different IDs and
 different sources, and it's scorecard-level, not ball-by-ball. Don't join the two databases or add
 their numbers together.
 

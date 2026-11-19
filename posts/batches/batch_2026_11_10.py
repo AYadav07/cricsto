@@ -1,14 +1,14 @@
 """Post batch, 2026-11-10: the IPL scoring boom.
 
-    python examples/batch_2026_11_10.py   → output/*.png, and prints the numbers used in the posts
+    python posts/batches/batch_2026_11_10.py   → posts/output/*.png, and prints the numbers used in the posts
 """
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # repo root
 
-from cricsto import charts  # noqa: E402
-from cricsto import insights as ins  # noqa: E402
+from posts import charts  # noqa: E402
+from cricsheet import insights as ins  # noqa: E402
 
 # Cricsheet season labels → the IPL year fans use
 IPL_YEAR = {"2007/08": "2008", "2009/10": "2010", "2020/21": "2020"}

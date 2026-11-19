@@ -2,15 +2,16 @@
 
 Question: How has powerplay scoring changed season by season in the IPL?
 
-    python examples/first_post.py
-Chart lands in output/. Check the printed table before you post anything.
+    python posts/batches/first_post.py
+Chart lands in posts/output/. Check the printed table before you post anything.
 """
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # repo root
 
-from cricsto import charts, insights as ins  # noqa: E402
+from cricsheet import insights as ins  # noqa: E402
+from posts import charts  # noqa: E402
 
 DATASET = "ipl"
 

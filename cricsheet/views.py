@@ -1,4 +1,4 @@
-"""(Re)create the views in cricsto/views.sql."""
+"""(Re)create the views in cricsheet/views.sql."""
 from __future__ import annotations
 
 from pathlib import Path

@@ -9,10 +9,10 @@ from pathlib import Path
 import duckdb
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]   # repo root, so `import cricsheet` works
 sys.path.insert(0, str(ROOT))
 
-from cricsto.load_json import load  # noqa: E402
+from cricsheet.load_json import load  # noqa: E402
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -48,7 +48,7 @@ class Env:
             con.close()
 
     def views(self) -> None:
-        from cricsto.views import apply_views
+        from cricsheet.views import apply_views
         apply_views(self.db)
 
 

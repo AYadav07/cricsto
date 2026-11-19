@@ -1,10 +1,10 @@
-"""Print a JSON summary of data/cricsto.duckdb: when it was built and the latest match per dataset.
+"""Print a JSON summary of cricsheet/data/cricsto.duckdb: when it was built and the latest match per dataset.
 
 Published next to the database in the data-latest release, so you can see how fresh it is
 without downloading it.
 
 Usage:
-    python scripts/manifest.py [path/to/cricsto.duckdb]
+    python cricsheet/scripts/manifest.py [path/to/cricsto.duckdb]
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 import duckdb
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent   # the cricsheet/ folder
 DB = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data" / "cricsto.duckdb"
 
 

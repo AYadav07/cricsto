@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from cricsto.load_json import LoadError, team_id
+from cricsheet.load_json import LoadError, team_id
 from conftest import basic_match
 
 

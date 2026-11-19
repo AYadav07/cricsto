@@ -1,8 +1,8 @@
-# Weekly Cricsheet refresh → build data/cricsto.duckdb → run the tests →
+# Weekly Cricsheet refresh → build cricsheet/data/cricsto.duckdb → run the tests →
 # publish the database as a release asset (tag: data-latest).
 #
 # Any machine (laptop, phone session with Claude) gets the latest data with:
-#   bash scripts/get_db.sh
+#   bash cricsheet/scripts/get_db.sh
 name: Refresh data
 
 on:
@@ -43,43 +43,43 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            data/raw
-            data/cricsto.duckdb
-          key: cricsto-data-${{ github.run_id }}
-          restore-keys: cricsto-data-
+            cricsheet/data/raw
+            cricsheet/data/cricsto.duckdb
+          key: cricsheet-data-${{ github.run_id }}
+          restore-keys: cricsheet-data-
 
       - name: Refresh from Cricsheet
         run: |
           if [ "${{ inputs.full }}" = "true" ] \
              || [ "${{ github.event.schedule }}" = "30 22 1 * *" ] \
-             || [ ! -d data/raw/json ] || [ ! -f data/cricsto.duckdb ]; then
+             || [ ! -d cricsheet/data/raw/json ] || [ ! -f cricsheet/data/cricsto.duckdb ]; then
             echo "Mode: full sync"
-            python scripts/refresh.py --full
+            python cricsheet/scripts/refresh.py --full
           else
             # 30-day window: overlaps are free (unchanged files are skipped by hash)
             # and it covers a missed week.
             echo "Mode: recently added (30 days)"
-            python scripts/refresh.py --days 30
+            python cricsheet/scripts/refresh.py --days 30
           fi
 
       # Nothing is published unless the loader's validation and the baseline tests pass.
       - name: Run tests
-        run: python -m pytest tests -q
+        run: python -m pytest cricsheet/tests -q
 
       - name: Save data for next run
         if: success()
         uses: actions/cache/save@v4
         with:
           path: |
-            data/raw
-            data/cricsto.duckdb
-          key: cricsto-data-${{ github.run_id }}
+            cricsheet/data/raw
+            cricsheet/data/cricsto.duckdb
+          key: cricsheet-data-${{ github.run_id }}
 
       - name: Build manifest and compress
         run: |
-          python scripts/manifest.py > manifest.json
+          python cricsheet/scripts/manifest.py > manifest.json
           cat manifest.json
-          gzip -6 -c data/cricsto.duckdb > cricsto.duckdb.gz
+          gzip -6 -c cricsheet/data/cricsto.duckdb > cricsto.duckdb.gz
           ls -lh cricsto.duckdb.gz
 
       - name: Publish to release data-latest
@@ -88,6 +88,6 @@ jobs:
         run: |
           if ! gh release view data-latest >/dev/null 2>&1; then
             gh release create data-latest --title "Latest data" --latest=false \
-              --notes "Built weekly by the Refresh data workflow. Download with: bash scripts/get_db.sh. Data from Cricsheet (cricsheet.org)."
+              --notes "Built weekly by the Refresh data workflow. Download with: bash cricsheet/scripts/get_db.sh. Data from Cricsheet (cricsheet.org)."
           fi
           gh release upload data-latest cricsto.duckdb.gz manifest.json --clobber
