@@ -9,3 +9,12 @@ __pycache__/
 *.pyc
 .venv/
 .ipynb_checkpoints/
+
+# Scratch files to delete by hand
+_to_delete/
+
+# History (pre-2002 scorecards): separate raw data and database (rebuild with python history/build.py)
+history/raw/
+history/*.duckdb
+history/*.duckdb.tmp
+history/*.duckdb.wal

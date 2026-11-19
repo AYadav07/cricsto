@@ -14,7 +14,12 @@ Cricsheet ball-by-ball data → local DuckDB database → SQL insights → on-br
 
 Typical loop: a question people are debating ("Who scores fastest at the death since 2024?") → a SQL query → a result table → a chart → a post.
 
-## Current state (2026-11-10: v2 complete, on `main`)
+## Current state (2026-11-10: v2 complete, on `main`; 2026-11-19: cloud data refresh + separate history DB)
+
+Latest session (2026-11-19, Claude in the claude.ai app, working on this folder through the desktop app):
+- Weekly GitHub Action that refreshes Cricsheet data and publishes the database as a release (PR #1, merged). See "Data from anywhere".
+- A second, fully separate database of pre-2002 scorecards in `history/`. See "History database".
+
 
 v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline was removed; its code is in commit `85bda72`. `README.md` is the user guide; `SCHEMA.md` is the full reference (every table and column with its JSON source, keys, views, a JSON coverage map, cricket rules, loading, validation, refresh, data notes and example queries).
 
@@ -25,8 +30,10 @@ v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline wa
 - `python scripts/refresh.py`: weekly refresh from Cricsheet's recently-added zips (`--full` monthly: re-download the 8 full zips; `--dry-run` to preview), then the incremental load. Code in `cricsto/refresh.py` (SCHEMA.md §7a).
 - `cricsto/db.py`: query helpers (`connect()`, `run_query()`, `sql()`).
 - `cricsto/insights.py`: one-line insight functions backed by `queries/*.sql` (`$param` placeholders). All run on v2.
-- `cricsto/charts.py`: branded `bar()`, `line()`, `save()` → `output/<name>.png` (1600×900). Known issue: long player names are clipped on the left of bar charts.
+- `cricsto/charts.py`: branded `bar()`, `line()`, `scatter()`, `save()` → `output/<name>.png` (1600×900). Horizontal bars widen the left margin to fit the longest name; `scatter()` takes `label_offsets` to move colliding labels. Brand fonts are static instances in `fonts/` (Space Grotesk Medium/Bold, Inter Regular/SemiBold/Bold, cut from the Google Fonts variable files because matplotlib can't pick weights from a variable font).
 - `examples/first_post.py`: end-to-end example; runs on v2.
+- `examples/batch_2026_11_10.py`: first post batch (IPL phase run rates, 200+ totals and chases, death hitters strike rate vs dot %); rerun to regenerate the charts and print every number used.
+- `queries/big_total_chases.sql` / `insights.big_total_chases()`: per season, first-innings totals ≥ `$threshold` and how many were chased (completed matches with a winner, D/L excluded).
 - `data/reference/bowler_types.csv`: manual bowler → pace/spin mapping, columns `person_id,name,bowler_type` (Cricsheet has no bowling style). Currently empty; `insights.bowlers_to_classify()` lists bowlers to add.
 - `tests/`: `python -m pytest tests`, 46 tests. Fixture-based loader/view tests, plus checks on the real database against `tests/baseline_v1/` (skipped if the database isn't built).
 
@@ -44,17 +51,47 @@ v2 builds `data/cricsto.duckdb` from Cricsheet JSON only. The v1 CSV pipeline wa
 10. **Foreign keys kept; deletes child-first (2026-11-10).** DuckDB 2.0 allows updating referenced rows but not deleting a parent in the same transaction as its children. So reloads delete level by level in committed transactions, then insert in one transaction. A match is always fully loaded or absent, and a failed run heals on the next run.
 11. **`is_wicket` excludes retirements (2026-11-10).** In `deliveries`, retired hurt / retired not out are not wickets (v1 counted them). `player_dismissed` / `wicket_type` still show every wicket entry.
 12. **Queries group by ID (2026-11-10).** `queries/*.sql` group players by `batter_id` / `bowler_id` and venues by `venue_id`, and show the latest name. Outs come from `striker_out` (retirements don't count). Every `ORDER BY` has a tie-break, and super overs are excluded with `NOT is_super_over`. `bowler_types.csv` is keyed by `person_id` (`insights.bowlers_to_classify()` lists who's missing). `find_player()` searches every name a person has used and returns `person_id`.
+13. **Database shipped as a release asset, not committed (2026-11-19).** The DuckDB file is a few hundred MB: over GitHub's 100 MB file limit, and a weekly commit would bloat history. A GitHub Action rebuilds it and replaces the `data-latest` release file instead.
+14. **Pre-2002 data is a separate database (2026-11-19).** No open ball-by-ball exists before Cricsheet's coverage, so scorecards go into `history/history.duckdb` with their own IDs and code. Kept separate at the user's request: never merged, joined or summed with the Cricsheet database.
 
 ## Raw data (v2)
 
 `data/raw/json/<code>_<gender>_json/` (git-ignored; on a fresh clone, `python scripts/refresh.py --full` downloads it and builds the database). There are 8 folders (`ipl_male`, `wpl_female`, `odis_male`, `odis_female`, `t20s_male`, `t20s_female`, `tests_male`, `tests_female`) holding 11,340 matches in Cricsheet JSON 1.3.0. It is the only raw data; the v1 CSV is gone.
+
+## Data from anywhere (phone / cloud sessions)
+
+Added 2026-11-19 (PR #1, merged to `main`). Lets Claude query the data from the phone or any cloud session without this laptop.
+
+- `.github/workflows/refresh-data.yml`: runs every Monday 03:00 IST (`--days 30` recently-added refresh), a full sync on the 1st of each month 04:00 IST, or by hand from **Actions → Refresh data → Run workflow** (tick "Full sync"). It caches `data/raw` + the database between runs, runs `python -m pytest tests`, and only if they pass publishes `cricsto.duckdb.gz` and `manifest.json` to the release **`data-latest`** (replacing the previous files). The database is never committed (too big for git, and `.gitignore` excludes it).
+- `scripts/get_db.sh`: downloads and unzips the release to `data/cricsto.duckdb` and `data/manifest.json`. Uses `gh release download` if the GitHub CLI is signed in (needed if the repo is ever made private), otherwise the public link.
+- `scripts/manifest.py`: prints build time, total matches/balls and the latest match per dataset/gender. Check it before posting; for matches newer than `latest_match`, use the live scorecard.
+- First run 2026-11-19 succeeded: 11,340 matches, 5,127,683 balls, latest match 2026-11-02. Download + open verified from a cloud session with DuckDB 2.0.
+- Phone workflow: "Cricsto: <question>" → Claude runs `bash scripts/get_db.sh`, queries, charts with `cricsto/charts.py`, sends the PNG + post text → the user posts from the X app. No automated posting.
+- Network: Claude cloud sessions and the desktop app's Linux shell can reach GitHub (and package registries) but **not** cricsheet.org, Hugging Face, Kaggle or ESPNcricinfo. That's why the refresh runs on GitHub's machines.
+- Repo is public (`AYadav07/cricsto`), so the release is public. Cricsheet data may be shared with credit; the release notes credit Cricsheet.
+
+## History database (separate, pre-2002 scorecards)
+
+Added 2026-11-19. **A second, fully separate database. Never merge it with `data/cricsto.duckdb`**: different source, different player/match IDs, scorecard-level not ball-by-ball. Never join the two databases or add their numbers together; if a post uses both, say which numbers come from which.
+
+- Why: Cricsheet ball-by-ball starts Dec 2001 (Tests) / Jun 2002 (ODIs); no open ball-by-ball exists for older matches. This gives full scorecards back to 1877.
+- Source: Hugging Face `bhuvaneshprasad/test-cricket-dataset-1877-2014` and `bhuvaneshprasad/odi-cricket-dataset-1971-2014` (ESPNcricinfo-derived CSVs; despite the names both run to Dec 2023). Cloned into `history/raw/test/` and `history/raw/odi/` (git-ignored). No stated licence: analyse and post derived stats with credit, don't republish the raw files.
+- Contents: men's Tests 2,520 (1,581 before 2002) and ODIs 4,717 (1,782 before 2002). Tables `matches`, `match_players`, `innings`, `batting`, `bowling`, `fall_of_wickets`, `partnerships`, `players`, `load_warnings`, `load_info`; views `batter_innings`, `bowler_innings`, `match_results`.
+- Files, all in `history/`: `build.py` (full rebuild from `raw/` into `history.duckdb`, about 10 s), `schema.sql`, `views.sql`, `db.py` (`run()`, `sql()`, `find_player()`), `queries/career_batting.sql`, `queries/career_bowling.sql`, `README.md` (overview), **`SCHEMA.md` (full reference: every table and column, coverage by decade, rules, tested example queries; read this before querying)**.
+- It's a fixed snapshot: no refresh needed. Rebuild only if `build.py` changes.
+- Data rules (details in `history/SCHEMA.md` §7): NULL = not recorded. Balls faced are patchy before 1980; dots, fall-of-wicket overs and the dismissing bowler on the batting card only from ~2000; bowler `wides`/`noballs` are 0 when not recorded (don't use them before the 1990s). 8-ball overs (179 Tests, 13 ODIs) are detected from figures ending .6/.7 and `bowling.balls` is corrected; economy and strike rates are per 6 balls. Count appearances from `match_players`. Names are full names (`Donald Bradman`); group by `player_id`.
+- Checks: `load_warnings` has 63 innings whose card doesn't add up, 41 bowler-wicket mismatches, 68 IDs with no player row, and 6 abandoned matches. Career totals were spot-checked against published records (Bradman 6,996 at 99.94; Tendulkar 15,921 / 18,426 runs and 200 / 463 matches; Muralidaran 800; Warne 708; Grimmett 14,513 balls after the 8-ball fix).
+- Status 2026-11-19: built on this laptop with DuckDB 1.5.6 (Claude's Linux shell; readable by 2.0). **Not committed yet** and **not in the `data-latest` release yet**.
 
 ## Next ideas
 
 v2 was built in steps 1–6 on branch `v2-json` (2026-11-10) and merged into `main`.
 
 Open items:
-- `cricsto/charts.py`: long player names are clipped on the left of bar charts.
+- Commit `history/` (code and docs only; `history/raw/` and `history/*.duckdb` are git-ignored) and the `.gitignore` / `CLAUDE.md` changes.
+- Upload `history/history.duckdb` to the `data-latest` release once by hand (Edit release → attach), then add it to `scripts/get_db.sh` so phone sessions can query it too. It doesn't change, so it doesn't need the Action.
+- Optional for history: more queries (venue / toss results, chases by target, batting position, partnership records, pace vs spin via `players.bowling_style`), pytest checks for the career spot-checks and the 8-ball fix.
+- `players.bowling_style` in the history DB could help fill `data/reference/bowler_types.csv`, but the IDs differ: match by name + dates, and check by hand.
 - Fill `data/reference/bowler_types.csv` (`insights.bowlers_to_classify()` lists who's missing).
 - Unknown: whether corrected matches reappear in Cricsheet's "recently added" zips. Monthly `refresh.py --full` covers it either way.
 
@@ -95,4 +132,7 @@ Sharp, evidence-first, curious. Hook = a question; answer = one clear chart plus
 - Windows 11 laptop, VS Code with the Claude Code extension; Python 3 venv in `.venv/`.
 - Install: `pip install -r requirements.txt` (duckdb, pandas, matplotlib, jupyterlab, pytest). Tested with DuckDB 2.0.0.
 - Tests: `python -m pytest tests` (the real-data tests need the database built).
-- Run SQL directly: `duckdb data/cricsto.duckdb`, or DBeaver → DuckDB connection.
+- Run SQL directly: `duckdb data/cricsto.duckdb`, or DBeaver → DuckDB connection. History: `duckdb history/history.duckdb`.
+- DuckDB 2.0 note: relations no longer have `fetchone()`. Use `con.execute(sql).fetchall()` / `.fetchone()` or `.df()`.
+- GitHub CLI (`gh`) isn't installed on Windows yet (`winget install --id GitHub.cli`, then `gh auth login`). Only needed if the repo goes private.
+- Claude in the claude.ai app can edit this folder through the desktop app's folder connection, **except `.github/workflows/`** (blocked: workflow files are added by hand). Its Linux shell has Python 3.10 with DuckDB 1.5.x only, so it can't open `data/cricsto.duckdb` (DuckDB 2.0 format). Its git also sees CRLF line-ending noise, so commit from Windows git or VS Code.
