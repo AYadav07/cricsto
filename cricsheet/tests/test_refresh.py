@@ -103,3 +103,31 @@ def test_refresh_then_load(env, monkeypatch):
     refresh.weekly(raw_dir=env.raw)
     r = env.load()
     assert r["new"] == 1 and r["rows"]["balls"] == 10
+
+
+class _Resp:
+    def __init__(self, body, ctype):
+        self.body, self.headers = body, {"Content-Type": ctype}
+    def read(self):
+        return self.body
+    def __enter__(self):
+        return self
+    def __exit__(self, *a):
+        return False
+
+
+def test_fetch_retries_a_web_page_then_returns_the_zip(monkeypatch):
+    answers = [_Resp(b"<!DOCTYPE html><title>Too many requests</title>", "text/html"),
+               _Resp(make_zip({"1.json": match()}), "application/zip")]
+    monkeypatch.setattr(refresh.urllib.request, "urlopen", lambda req, timeout: answers.pop(0))
+    monkeypatch.setattr(refresh.time, "sleep", lambda s: None)
+    assert refresh.fetch("https://cricsheet.org/downloads/x.zip").startswith(b"PK")
+
+
+def test_fetch_gives_up_with_a_clear_error(monkeypatch):
+    monkeypatch.setattr(refresh.urllib.request, "urlopen",
+                        lambda req, timeout: _Resp(b"<html>blocked</html>", "text/html"))
+    monkeypatch.setattr(refresh.time, "sleep", lambda s: None)
+    import pytest
+    with pytest.raises(refresh.DownloadError, match="not a zip"):
+        refresh.fetch("https://cricsheet.org/downloads/x.zip")

@@ -48,6 +48,28 @@ jobs:
           key: cricsheet-data-${{ github.run_id }}
           restore-keys: cricsheet-data-
 
+      # One-off bridge: runs before 2026-11-19 saved the data under the old paths (data/...).
+      # If nothing was found under the new name, restore that copy and move it into cricsheet/data/,
+      # so we don't re-download all 8 zips. Safe to delete once a run has saved cricsheet-data-*.
+      - name: Restore data saved before the repo restructure
+        id: restore_old
+        if: steps.restore.outputs.cache-matched-key == ''
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/raw
+            data/cricsto.duckdb
+          key: cricsto-data-none
+          restore-keys: cricsto-data-
+
+      - name: Move old data into cricsheet/data
+        if: steps.restore_old.outputs.cache-matched-key != ''
+        run: |
+          mkdir -p cricsheet/data
+          [ -d data/raw ] && mv data/raw cricsheet/data/raw
+          [ -f data/cricsto.duckdb ] && mv data/cricsto.duckdb cricsheet/data/cricsto.duckdb
+          ls cricsheet/data
+
       - name: Refresh from Cricsheet
         run: |
           if [ "${{ inputs.full }}" = "true" ] \

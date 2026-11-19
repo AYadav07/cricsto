@@ -107,7 +107,7 @@ v2 was built in steps 1–6 on branch `v2-json` (2026-11-10) and merged into `ma
 
 Open items:
 - Commit `history/` (code and docs only; `history/raw/` and `history/*.duckdb` are git-ignored) and the `.gitignore` / `CLAUDE.md` changes.
-- Upload `history/history.duckdb` to the `data-latest` release once by hand (Edit release → attach), then add it to `cricsheet/scripts/get_db.sh` so phone sessions can query it too. It doesn't change, so it doesn't need the Action.
+- Upload `history/history.duckdb` to the `data-latest` release once by hand (Releases → Latest data → Edit → attach → Update release). Phone/cloud sessions then get it with `bash history/get_db.sh` (separate from `cricsheet/scripts/get_db.sh`). It doesn't change, so it doesn't need the Action; the Action's `--clobber` upload only replaces its own two files.
 - Optional for history: more queries (venue / toss results, chases by target, batting position, partnership records, pace vs spin via `players.bowling_style`), pytest checks for the career spot-checks and the 8-ball fix.
 - `players.bowling_style` in the history DB could help fill `cricsheet/data/reference/bowler_types.csv`, but the IDs differ: match by name + dates, and check by hand.
 - Fill `cricsheet/data/reference/bowler_types.csv` (`insights.bowlers_to_classify()` lists who's missing).

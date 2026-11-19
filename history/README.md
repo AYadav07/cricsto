@@ -8,6 +8,7 @@ own IDs, own queries. Never join the two or add their numbers together without s
 
 ```
 history/raw/test/, history/raw/odi/   source CSVs (git-ignored)
+history/get_db.sh                      downloads the built database from the data-latest release
 history/build.py                       builds history/history.duckdb (about 10 s, full rebuild each run)
 history/schema.sql                     tables
 history/views.sql                      batter_innings, bowler_innings, match_results
@@ -16,6 +17,14 @@ history/queries/*.sql                  reusable queries with $params
 ```
 
 ## Set up
+
+Quickest: download the built database (no raw files needed):
+
+```bash
+bash history/get_db.sh       # → history/history.duckdb, from the data-latest release
+```
+
+Or build it yourself:
 
 ```bash
 cd history/raw

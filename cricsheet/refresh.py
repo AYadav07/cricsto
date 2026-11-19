@@ -9,6 +9,8 @@ from __future__ import annotations
 import io
 import json
 import re
+import time
+import urllib.error
 import urllib.request
 import zipfile
 from dataclasses import dataclass, field
@@ -17,7 +19,9 @@ from pathlib import Path
 from .load_json import RAW_DIR
 
 BASE_URL = "https://cricsheet.org/downloads/"
-USER_AGENT = "cricsto-data/2.0"
+USER_AGENT = "cricsto-data/2.0 (+https://github.com/AYadav07/cricsto)"
+ATTEMPTS = 4              # per file
+RETRY_WAIT = 60           # seconds; multiplied by the attempt number
 FOLDERS = [
     "ipl_male_json", "wpl_female_json",
     "odis_male_json", "odis_female_json",
@@ -45,10 +49,36 @@ def route(info: dict) -> str | None:
     return None
 
 
+class DownloadError(RuntimeError):
+    """Cricsheet didn't return a usable file (after retries)."""
+
+
 def fetch(url: str, timeout: int = 180) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+    """Download url. A .zip must really be a zip: Cricsheet sometimes answers with a web page
+    (rate limit or bot check) and HTTP 200. Retries with a growing pause, then raises
+    DownloadError with what came back, so nothing half-downloaded reaches the loader."""
+    last = ""
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                body = resp.read()
+                ctype = resp.headers.get("Content-Type", "")
+            if not url.endswith(".zip") or body.startswith(b"PK"):
+                return body
+            last = (f"got {len(body):,} bytes of {ctype or 'unknown type'}, not a zip; "
+                    f"starts with {body[:150]!r}")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                raise DownloadError(f"{url}: 404 not found") from e
+            last = f"HTTP {e.code} {e.reason}"
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            last = f"{type(e).__name__}: {e}"
+        if attempt < ATTEMPTS:
+            wait = RETRY_WAIT * attempt
+            print(f"  {url}: {last}. Retrying in {wait}s ({attempt}/{ATTEMPTS - 1})", flush=True)
+            time.sleep(wait)
+    raise DownloadError(f"{url}: failed after {ATTEMPTS} attempts. Last: {last}")
 
 
 def _matches_in_zip(data: bytes) -> dict[str, bytes]:
@@ -113,6 +143,7 @@ def full_sync(folders: list[str] | None = None, raw_dir: Path = RAW_DIR,
     """Make each folder identical to its full Cricsheet zip (adds, updates, removes)."""
     rep = Report()
     for folder in folders or FOLDERS:
+        print(f"  {folder}.zip", flush=True)
         data = fetch(f"{BASE_URL}{folder}.zip")
         files = _matches_in_zip(data)
         target_dir = raw_dir / folder
