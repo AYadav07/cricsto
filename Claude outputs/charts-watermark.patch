@@ -1,0 +1,51 @@
+diff --git a/posts/charts.py b/posts/charts.py
+index f7a0b20..f6678a9 100644
+--- a/posts/charts.py
++++ b/posts/charts.py
+@@ -26,6 +26,8 @@ DIM_BAR = "#5B6B85"       # non-highlighted bars
+ SECOND = "#E8A33D"        # second series (amber: differs from red in lightness too)
+ 
+ HANDLE = "@cricsto"
++WATERMARK_ALPHA = 0.35  # handle watermark opacity (1 = solid)
++WATERMARK_SIZE = 8      # handle watermark font size (was 11)
+ 
+ 
+ def _register_fonts() -> tuple[str, str]:
+@@ -73,14 +75,15 @@ def _frame(title: str, subtitle: str | None, source: str):
+              color=CREAM, va="top")
+     if subtitle:
+         fig.text(0.04, 0.845, subtitle, fontsize=11.5, color=MUTED, va="top")
+-    fig.text(0.04, 0.035, source, fontsize=9, color=MUTED)
+-    fig.text(0.96, 0.035, HANDLE, fontsize=11, fontweight="bold", family=HEADING_FONT,
+-             color=RED, ha="right")
++    if source:  # pass source=None (or "") for reply charts: no credit line
++        fig.text(0.04, 0.035, source, fontsize=9, color=MUTED)
++    fig.text(0.96, 0.035, HANDLE, fontsize=WATERMARK_SIZE, fontweight="bold", family=HEADING_FONT,
++             color=RED, ha="right", alpha=WATERMARK_ALPHA)
+     return fig, ax
+ 
+ 
+ def bar(labels, values, title: str, subtitle: str | None = None,
+-        source: str = "Data: Cricsheet", highlight=None, value_fmt: str = "{:.1f}",
++        source: str | None = None, highlight=None, value_fmt: str = "{:.1f}",
+         horizontal: bool = True, xlabel: str | None = None):
+     """Ranked bar chart. `highlight` = a label (or list of labels) drawn in red; others dimmed.
+     With no highlight, all bars are red."""
+@@ -125,7 +128,7 @@ def _fit_left(fig, ax, min_left: float = 0.08) -> None:
+ 
+ 
+ def scatter(x, y, labels, title: str, subtitle: str | None = None,
+-            source: str = "Data: Cricsheet", xlabel: str | None = None,
++            source: str | None = None, xlabel: str | None = None,
+             ylabel: str | None = None, highlight=None, invert_y: bool = False,
+             label_offsets: dict | None = None):
+     """Labelled scatter (e.g. strike rate vs dot %). `highlight` = label(s) drawn in red;
+@@ -156,7 +159,7 @@ def scatter(x, y, labels, title: str, subtitle: str | None = None,
+ 
+ 
+ def line(x, series: dict, title: str, subtitle: str | None = None,
+-         source: str = "Data: Cricsheet", ylabel: str | None = None, label_ends: bool = True):
++         source: str | None = None, ylabel: str | None = None, label_ends: bool = True):
+     """Trend chart. `series` = {name: values}; first series is red, second amber, rest dimmed.
+     Series are labelled at their right end instead of with a legend."""
+     palette = [RED, SECOND] + [DIM_BAR] * 10
